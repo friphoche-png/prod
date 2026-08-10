@@ -1,0 +1,367 @@
+/* ═══════════════════════════════════════════════════
+   FRIP'HOCHE — Feuille de style
+   Direction graphique « Sticker Vivant »
+   Fichier : css/style.css
+   ═══════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;900&display=swap');
+
+:root {
+  /* Couleurs principales */
+  --violet-fonce:  #4A2480;   /* actions principales */
+  --violet:        #9B72CF;   /* accent, liens */
+  --violet-hover:  #7A4FB5;
+  --lavande:       #E8E0F5;   /* fonds teintés */
+  --lavande-clair: #F5F2FA;   /* fond de page */
+  --bordure:       #D4C5EF;
+  --bordure-claire:#EDE8F8;
+
+  /* Textes */
+  --nuit:          #1A1A2E;
+  --gris:          #5A5A7A;
+  --gris-clair:    #9B8AAA;
+
+  /* Statuts */
+  --sauge-fond:    #DDF0C0;
+  --sauge-texte:   #4A7010;
+  --sauge-fonce:   #2E5A08;
+  --gris-fond:     #EBEBEB;
+  --gris-texte:    #4A4A5A;
+  --alerte-fond:   #FFF0CC;
+  --alerte-texte:  #8A6000;
+  --alerte-bord:   #E8C547;
+
+  --police: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --r-tag: 4px;
+  --r-btn: 10px;
+  --r-carte: 12px;
+  --r-pill: 20px;
+}
+
+/* ─── Base ─────────────────────────────────── */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--police);
+  background: var(--lavande-clair);
+  color: var(--nuit);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 76px;          /* place pour la barre du bas */
+}
+
+a { color: var(--violet); text-decoration: none; }
+
+img { max-width: 100%; display: block; }
+
+.page { max-width: 720px; margin: 0 auto; padding: 0 14px; }
+
+/* ─── Titres ───────────────────────────────── */
+
+h1 { font-size: 28px; font-weight: 900; line-height: 1.15; }
+h2 { font-size: 20px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 700; color: var(--violet); }
+
+.label {
+  font-size: 12px; font-weight: 700; color: var(--violet);
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.micro { font-size: 11px; color: var(--gris); }
+.secondaire { color: var(--gris); font-size: 13px; }
+.centre { text-align: center; }
+
+/* ─── En-têtes ─────────────────────────────── */
+
+.barre-haut {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  background: var(--lavande-clair);
+  border-bottom: 1px solid var(--bordure);
+  position: sticky; top: 0; z-index: 20;
+}
+.barre-haut .titre { font-size: 15px; font-weight: 900; flex: 1; }
+
+.bouton-rond {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--lavande); color: var(--violet);
+  border: none; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; font-family: var(--police);
+}
+.bouton-rond:hover { background: var(--bordure); }
+
+.entete-sombre {
+  background: var(--nuit); color: #fff;
+  padding: 16px 18px 22px;
+}
+.entete-sombre h1 { font-size: 19px; }
+.entete-sombre .sous { font-size: 13px; color: #C4A8EE; margin-top: 2px; }
+
+/* ─── Boutons ──────────────────────────────── */
+
+.btn {
+  display: block; width: 100%;
+  padding: 13px 18px;
+  border: none; border-radius: var(--r-btn);
+  background: var(--violet-fonce); color: #fff;
+  font-family: var(--police); font-size: 15px; font-weight: 900;
+  text-align: center; cursor: pointer;
+  transition: background .15s;
+}
+.btn:hover { background: #3B1C68; }
+.btn:disabled { background: var(--bordure); color: var(--gris-clair); cursor: not-allowed; }
+
+.btn-secondaire {
+  background: transparent; color: var(--violet);
+  border: 2px solid var(--violet); font-size: 14px; font-weight: 700;
+  padding: 11px 18px;
+}
+.btn-secondaire:hover { background: var(--lavande); }
+
+.btn-petit { width: auto; padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+
+.btn-lien {
+  background: none; border: none; color: var(--violet);
+  font-family: var(--police); font-size: 13px; font-weight: 700;
+  cursor: pointer; padding: 0; width: auto;
+}
+
+/* ─── Formulaires ──────────────────────────── */
+
+.champ { margin-bottom: 14px; }
+.champ label {
+  display: block; font-size: 12px; font-weight: 900;
+  margin-bottom: 5px;
+}
+
+input[type=text], input[type=email], input[type=password],
+input[type=tel], input[type=number], input[type=search],
+select, textarea {
+  width: 100%; padding: 11px 13px;
+  border: 2px solid var(--bordure); border-radius: 9px;
+  background: #fff; color: var(--nuit);
+  font-family: var(--police); font-size: 14px;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--violet);
+}
+input::placeholder, textarea::placeholder { color: var(--gris-clair); }
+textarea { min-height: 88px; resize: vertical; }
+
+.ligne-champs { display: flex; gap: 9px; }
+.ligne-champs > * { flex: 1; }
+
+.case { display: flex; gap: 9px; align-items: flex-start; margin-bottom: 12px; }
+.case input[type=checkbox] { width: 19px; height: 19px; margin-top: 1px; accent-color: var(--violet-fonce); flex-shrink: 0; }
+.case label { font-size: 12px; color: var(--gris); font-weight: 400; line-height: 1.45; }
+
+/* ─── Choix en pastilles ───────────────────── */
+
+.choix { display: flex; gap: 6px; flex-wrap: wrap; }
+.choix button {
+  padding: 7px 13px; border-radius: var(--r-pill);
+  border: 1px solid var(--bordure); background: #fff;
+  color: var(--gris); font-family: var(--police);
+  font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.choix button:hover { border-color: var(--violet); }
+.choix button.actif {
+  background: var(--violet-fonce); color: #fff; border-color: var(--violet-fonce);
+}
+
+/* ─── Cartes ───────────────────────────────── */
+
+.carte {
+  background: #fff; border: 1px solid var(--bordure);
+  border-radius: var(--r-carte); overflow: hidden;
+}
+
+.grille { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (min-width: 560px) { .grille { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 760px) { .grille { grid-template-columns: repeat(4, 1fr); } }
+
+.carte-article { cursor: pointer; transition: transform .12s, box-shadow .12s; }
+.carte-article:hover { transform: translateY(-2px); box-shadow: 0 4px 14px rgba(74,36,128,.13); }
+.carte-article .photo {
+  background: var(--lavande); aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; color: var(--violet);
+  background-size: cover; background-position: center;
+}
+.carte-article .corps { padding: 8px 9px 10px; }
+.carte-article .marque {
+  font-size: 10px; font-weight: 700; color: var(--violet);
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.carte-article .nom {
+  font-size: 13px; font-weight: 900; line-height: 1.25;
+  margin: 2px 0 4px;
+}
+.carte-article .infos { font-size: 11px; color: var(--gris); }
+
+.jetons { color: var(--sauge-fonce); font-weight: 700; }
+
+/* ─── Lignes de liste ──────────────────────── */
+
+.ligne {
+  background: #fff; border: 1px solid var(--bordure);
+  border-radius: var(--r-btn); padding: 12px 14px;
+  display: flex; align-items: center; gap: 11px;
+  margin-bottom: 7px; cursor: pointer;
+}
+.ligne:hover { border-color: var(--violet); }
+.ligne .contenu { flex: 1; min-width: 0; }
+.ligne .titre-ligne { font-size: 14px; font-weight: 700; }
+.ligne .fleche { color: var(--bordure); font-size: 16px; }
+.ligne.statique { cursor: default; }
+.ligne.statique:hover { border-color: var(--bordure); }
+
+.valeur { font-size: 14px; font-weight: 700; }
+
+/* ─── Pastilles de statut ──────────────────── */
+
+.pill {
+  display: inline-block; padding: 4px 11px;
+  border-radius: var(--r-pill);
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.pill-dispo   { background: var(--sauge-fond); color: var(--sauge-texte); }
+.pill-reserve { background: var(--violet); color: #fff; }
+.pill-vendu   { background: var(--gris-fond); color: var(--gris-texte); }
+.pill-brouillon { background: var(--alerte-fond); color: var(--alerte-texte); }
+.pill-violet  { background: var(--lavande); color: #5B3FA6; }
+
+/* ─── Encarts ──────────────────────────────── */
+
+.encart {
+  border-radius: var(--r-btn); padding: 11px 13px;
+  display: flex; gap: 9px; margin-bottom: 12px;
+  font-size: 12px; line-height: 1.5;
+}
+.encart-info   { background: var(--lavande); color: #5B3FA6; }
+.encart-ok     { background: #EAF5D8; color: var(--sauge-texte); }
+.encart-alerte { background: var(--alerte-fond); color: var(--alerte-texte); border: 1px solid var(--alerte-bord); }
+.encart-erreur { background: #FDECEC; color: #A02020; border: 1px solid #F0BABA; }
+
+/* ─── Cartouches jetons ────────────────────── */
+
+.cartouches { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+.cartouche { border-radius: var(--r-btn); padding: 11px 13px; }
+.cartouche-vert  { background: var(--sauge-fond); }
+.cartouche-vert2 { background: #EAF5D8; }
+.cartouche-violet{ background: var(--lavande); }
+.cartouche .titre-c { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+.cartouche .nombre  { font-size: 22px; font-weight: 900; }
+.cartouche-vert .titre-c, .cartouche-vert2 .titre-c { color: var(--sauge-texte); }
+.cartouche-vert .nombre, .cartouche-vert2 .nombre   { color: var(--sauge-fonce); }
+.cartouche-violet .titre-c { color: #5B3FA6; }
+.cartouche-violet .nombre  { color: var(--violet-fonce); }
+
+/* ─── Barre de navigation ──────────────────── */
+
+.barre-bas {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+  background: var(--lavande-clair);
+  border-top: 1px solid var(--bordure);
+  display: flex; justify-content: space-around;
+  padding: 9px 8px calc(9px + env(safe-area-inset-bottom));
+}
+.barre-bas a {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--bordure); font-size: 10px; font-weight: 700;
+  padding: 2px 10px;
+}
+.barre-bas a.actif { color: var(--violet); }
+.barre-bas .icone { font-size: 21px; line-height: 1; }
+
+/* ─── Séparateurs et espacements ───────────── */
+
+.trait { border: none; border-top: 1px solid var(--bordure); margin: 14px 0; }
+.section { margin-bottom: 18px; }
+.titre-section {
+  font-size: 12px; font-weight: 900; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* ─── États de chargement ──────────────────── */
+
+.chargement { text-align: center; padding: 40px 20px; color: var(--gris); font-size: 13px; }
+
+.vide {
+  text-align: center; padding: 44px 24px; color: var(--gris);
+}
+.vide .grand { font-size: 40px; margin-bottom: 10px; }
+.vide .titre-vide { font-size: 15px; font-weight: 700; color: var(--nuit); margin-bottom: 4px; }
+.vide p { font-size: 13px; }
+
+.squelette {
+  background: linear-gradient(90deg, var(--lavande) 25%, #F0EAFA 50%, var(--lavande) 75%);
+  background-size: 200% 100%;
+  animation: brille 1.3s infinite;
+  border-radius: var(--r-carte);
+}
+@keyframes brille { to { background-position: -200% 0; } }
+
+/* ─── Fenêtres surgissantes ────────────────── */
+
+.voile {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(26,26,46,.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 18px;
+}
+.voile[hidden] { display: none; }
+.fenetre {
+  background: var(--lavande-clair);
+  border-radius: 16px; width: 100%; max-width: 400px;
+  max-height: 88vh; overflow-y: auto;
+}
+.fenetre-entete {
+  padding: 15px 17px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+}
+.fenetre-corps { padding: 15px 17px 17px; }
+
+/* ─── Message flottant ─────────────────────── */
+
+.notification {
+  position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%);
+  z-index: 60; max-width: 340px; width: calc(100% - 32px);
+  padding: 12px 16px; border-radius: var(--r-btn);
+  font-size: 13px; font-weight: 700; text-align: center;
+  box-shadow: 0 4px 18px rgba(26,26,46,.22);
+  animation: monte .22s ease-out;
+}
+.notification[hidden] { display: none; }
+.notification-ok     { background: var(--sauge-fond); color: var(--sauge-fonce); }
+.notification-erreur { background: #FDECEC; color: #A02020; }
+.notification-info   { background: var(--nuit); color: #fff; }
+@keyframes monte { from { opacity: 0; transform: translate(-50%, 12px); } }
+
+/* ─── Divers ───────────────────────────────── */
+
+.surligne { background: var(--alerte-fond); border-radius: 3px; padding: 0 2px; }
+
+.rangee { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pousse { flex: 1; }
+
+.avatar {
+  border-radius: 50%; background: var(--violet); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; flex-shrink: 0;
+  background-size: cover; background-position: center;
+}
+.avatar-s { width: 36px; height: 36px; font-size: 13px; }
+.avatar-m { width: 48px; height: 48px; font-size: 16px; }
+.avatar-l { width: 62px; height: 62px; font-size: 20px; border: 3px solid #C4A8EE; }
+
+.pastille-couleur {
+  width: 27px; height: 27px; border-radius: 50%;
+  border: 2px solid var(--bordure); cursor: pointer;
+}
+.pastille-couleur.actif { border: 3px solid var(--violet-fonce); }
+
+[hidden] { display: none !important; }
