@@ -241,6 +241,8 @@ textarea { min-height: 88px; resize: vertical; }
   display: flex; gap: 9px; margin-bottom: 12px;
   font-size: 12px; line-height: 1.5;
 }
+/* Un texte contenant du gras reste sur une seule colonne */
+.encart > span { flex: 1; }
 .encart-info   { background: var(--lavande); color: #5B3FA6; }
 .encart-ok     { background: #EAF5D8; color: var(--sauge-texte); }
 .encart-alerte { background: var(--alerte-fond); color: var(--alerte-texte); border: 1px solid var(--alerte-bord); }
