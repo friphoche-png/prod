@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Catalogue</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:720px;margin:0 auto">
+
+  <!-- En-tête -->
+  <header style="background:#F5F2FA;padding:14px 14px 10px">
+    <div class="rangee" style="margin-bottom:11px">
+      <div>
+        <div style="font-size:19px;font-weight:900;line-height:1">Frip'Hoche</div>
+        <div class="micro" id="salut">Bonjour</div>
+      </div>
+      <a href="reservations.html" class="cartouche cartouche-vert"
+         style="display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:20px">
+        <span style="font-size:15px">&#129689;</span>
+        <span style="font-size:15px;font-weight:900;color:#2E5A08" id="solde">–</span>
+      </a>
+    </div>
+
+    <div style="position:relative;margin-bottom:9px">
+      <span style="position:absolute;left:11px;top:10px;font-size:14px;color:#9B72CF">&#128269;</span>
+      <input type="search" id="recherche" placeholder="Rechercher un vêtement…"
+             style="padding-left:34px">
+    </div>
+
+    <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:3px" id="rubans"></div>
+  </header>
+
+  <main class="page" style="padding-top:4px">
+
+    <div class="rangee" style="margin:12px 0 9px">
+      <span style="font-size:14px;font-weight:900" id="titre-liste">Catalogue</span>
+      <span class="micro" style="color:#9B72CF;font-weight:700" id="compteur"></span>
+    </div>
+
+    <div id="liste" class="grille"></div>
+
+    <div id="chargement" class="chargement">Chargement du catalogue…</div>
+
+    <div id="vide" class="vide" hidden>
+      <div class="grand">&#128087;</div>
+      <div class="titre-vide">Aucun article</div>
+      <p id="texte-vide">Reviens bientôt, de nouvelles pièces arrivent régulièrement.</p>
+    </div>
+
+    <div style="height:20px"></div>
+  </main>
+</div>
+
+<!-- Panneau de filtres -->
+<div class="voile" id="voile-filtres" hidden>
+  <div class="fenetre" style="max-width:440px">
+    <div class="fenetre-entete" style="background:#E8E0F5">
+      <h2 style="font-size:16px;color:#4A2480">Filtres</h2>
+      <button type="button" class="btn-lien" id="effacer">Tout effacer</button>
+    </div>
+    <div class="fenetre-corps">
+
+      <div class="champ">
+        <label>Catégorie</label>
+        <div class="choix" id="f-categorie"></div>
+      </div>
+
+      <div class="champ">
+        <label>Taille</label>
+        <div class="choix" id="f-taille"></div>
+      </div>
+
+      <div class="champ">
+        <label>Pointure</label>
+        <div class="choix" id="f-pointure"></div>
+      </div>
+
+      <div class="champ">
+        <label>Genre</label>
+        <div class="choix" id="f-genre"></div>
+      </div>
+
+      <div class="champ">
+        <label>Couleur</label>
+        <div style="display:flex;gap:7px;flex-wrap:wrap" id="f-couleur"></div>
+      </div>
+
+      <div class="champ">
+        <label>État</label>
+        <div class="choix" id="f-etat"></div>
+      </div>
+
+      <div class="champ">
+        <label>Coût en jetons</label>
+        <div class="choix" id="f-cout"></div>
+      </div>
+
+      <div class="champ">
+        <label>Trier par</label>
+        <div class="choix" id="f-tri"></div>
+      </div>
+
+      <button type="button" class="btn" id="appliquer">Voir les articles</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  let profil = null;
+  let categories = [];
+
+  const f = {
+    categorie: null, tailles: new Set(), pointures: new Set(),
+    genre: null, couleur: null, etat: null, couts: new Set(),
+    budget: false, matailleActive: false, tri: 'recent', texte: '',
+  };
+
+  // ── Démarrage ───────────────────────────────────
+
+  (async function demarrer() {
+    profil = await exigerConnexion();
+    if (!profil) return;
+
+    afficherNavigation('catalogue');
+    libererReservationsExpirees();
+
+    document.getElementById('salut').textContent = 'Bonjour ' + profil.prenom;
+    monSolde().then(s => document.getElementById('solde').textContent = s);
+
+    const { data } = await db.from('categories').select('id, nom, chaussures').order('ordre');
+    categories = data || [];
+
+    construireRubans();
+    construireFiltres();
+
+    // Par défaut, on filtre sur les tailles de la personne
+    const mesTailles = profil.tailles || (profil.taille ? [profil.taille] : []);
+    if (mesTailles.length) {
+      f.matailleActive = true;
+      mesTailles.forEach(t => f.tailles.add(t));
+      (profil.pointures || []).forEach(p => f.pointures.add(String(p)));
+    }
+
+    construireRubans();
+    charger();
+  })();
+
+  // ── Rubans du haut ──────────────────────────────
+
+  function construireRubans() {
+    const zone = document.getElementById('rubans');
+    zone.innerHTML = '';
+
+    const bFiltres = document.createElement('button');
+    bFiltres.className = 'chip-filtre';
+    bFiltres.style.cssText = `padding:6px 13px;border-radius:20px;border:none;
+      background:#4A2480;color:#fff;font-family:var(--police);font-size:12px;
+      font-weight:700;white-space:nowrap;cursor:pointer;flex-shrink:0`;
+    const nb = nombreFiltres();
+    bFiltres.textContent = nb ? `Filtres · ${nb}` : 'Filtres';
+    bFiltres.onclick = ouvrirFiltres;
+    zone.appendChild(bFiltres);
+
+    const mesTailles = profil.tailles || [];
+    if (mesTailles.length) {
+      const b = document.createElement('button');
+      b.style.cssText = ruban(f.matailleActive);
+      b.textContent = 'Ma taille · ' + mesTailles.join(', ');
+      b.onclick = () => {
+        f.matailleActive = !f.matailleActive;
+        f.tailles.clear(); f.pointures.clear();
+        if (f.matailleActive) {
+          mesTailles.forEach(t => f.tailles.add(t));
+          (profil.pointures || []).forEach(p => f.pointures.add(String(p)));
+        }
+        construireRubans(); charger();
+      };
+      zone.appendChild(b);
+    }
+
+    categories.forEach(c => {
+      const b = document.createElement('button');
+      const actif = f.categorie === c.id;
+      b.style.cssText = ruban(actif);
+      b.textContent = c.nom;
+      b.onclick = () => {
+        f.categorie = actif ? null : c.id;
+        construireRubans(); charger();
+      };
+      zone.appendChild(b);
+    });
+  }
+
+  function ruban(actif) {
+    return `padding:6px 13px;border-radius:20px;font-family:var(--police);
+      font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;flex-shrink:0;
+      border:1px solid ${actif ? '#9B72CF' : '#D4C5EF'};
+      background:${actif ? '#E8E0F5' : '#fff'};
+      color:${actif ? '#5B3FA6' : '#5A5A7A'}`;
+  }
+
+  function nombreFiltres() {
+    let n = 0;
+    if (f.categorie) n++;
+    if (f.genre) n++;
+    if (f.couleur) n++;
+    if (f.etat) n++;
+    n += f.couts.size ? 1 : 0;
+    if (!f.matailleActive && (f.tailles.size || f.pointures.size)) n++;
+    return n;
+  }
+
+  // ── Chargement des articles ─────────────────────
+
+  async function charger() {
+    document.getElementById('chargement').hidden = false;
+    document.getElementById('vide').hidden = true;
+    document.getElementById('liste').innerHTML = '';
+
+    let q = db.from('articles')
+      .select('id, numero, nom, taille, pointure, genre, couleur, etat, cout_jetons, photos, cree_le, marques(nom), categories(nom)')
+      .eq('statut', 'disponible');
+
+    if (f.categorie) q = q.eq('categorie_id', f.categorie);
+    if (f.genre)     q = q.eq('genre', f.genre);
+    if (f.couleur)   q = q.eq('couleur', f.couleur);
+    if (f.etat)      q = q.eq('etat', f.etat);
+    if (f.texte)     q = q.ilike('nom', `%${f.texte}%`);
+
+    // Tailles et pointures : on accepte l'un OU l'autre
+    const t = [...f.tailles], p = [...f.pointures].map(Number);
+    if (t.length && p.length) {
+      q = q.or(`taille.in.(${t.join(',')}),pointure.in.(${p.join(',')})`);
+    } else if (t.length) {
+      q = q.in('taille', t);
+    } else if (p.length) {
+      q = q.in('pointure', p);
+    }
+
+    if (f.couts.size) q = q.in('cout_jetons', [...f.couts].map(Number));
+
+    if (f.tri === 'prix')      q = q.order('cout_jetons', { ascending: true });
+    else if (f.tri === 'etat') q = q.order('etat', { ascending: true });
+    else                       q = q.order('cree_le', { ascending: false });
+
+    const { data, error } = await q.limit(120);
+
+    document.getElementById('chargement').hidden = true;
+
+    if (error) {
+      document.getElementById('texte-vide').textContent = messageErreur(error);
+      document.getElementById('vide').hidden = false;
+      return;
+    }
+
+    const articles = data || [];
+    document.getElementById('compteur').textContent =
+      articles.length ? `${articles.length} disponible${articles.length > 1 ? 's' : ''}` : '';
+    document.getElementById('titre-liste').textContent =
+      f.matailleActive ? 'Sélection pour toi' : 'Catalogue';
+
+    if (!articles.length) {
+      document.getElementById('texte-vide').textContent = nombreFiltres() || f.texte
+        ? 'Aucun article ne correspond à ta recherche. Essaie d\'élargir les filtres.'
+        : 'Reviens bientôt, de nouvelles pièces arrivent régulièrement.';
+      document.getElementById('vide').hidden = false;
+      return;
+    }
+
+    document.getElementById('liste').innerHTML = articles.map(carte).join('');
+  }
+
+  function carte(a) {
+    const photo = (a.photos && a.photos[0])
+      ? `style="background-image:url('${a.photos[0]}')"` : '';
+    const icone = (a.photos && a.photos[0]) ? '' : '&#128087;';
+    const marque = a.marques ? a.marques.nom : 'Sans marque';
+    return `
+      <a class="carte carte-article" href="article.html?id=${a.id}">
+        <div class="photo" ${photo}>${icone}</div>
+        <div class="corps">
+          <div class="marque">${echapper(marque)} · ${tailleAffichee(a)} · #${String(a.numero).padStart(3,'0')}</div>
+          <div class="nom">${echapper(a.nom)}</div>
+          <div class="infos">${nomEtat(a.etat)} · <span class="jetons">${a.cout_jetons} ${motJetons(a.cout_jetons)}</span></div>
+        </div>
+      </a>`;
+  }
+
+  // ── Recherche ───────────────────────────────────
+
+  let minuteur;
+  document.getElementById('recherche').addEventListener('input', (e) => {
+    clearTimeout(minuteur);
+    minuteur = setTimeout(() => { f.texte = e.target.value.trim(); charger(); }, 350);
+  });
+
+  // ── Panneau de filtres ──────────────────────────
+
+  const voile = document.getElementById('voile-filtres');
+
+  function multi(zoneId, valeurs, ensemble, libelle) {
+    const zone = document.getElementById(zoneId);
+    zone.innerHTML = '';
+    valeurs.forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = libelle ? libelle(v) : v;
+      if (ensemble.has(String(v))) b.classList.add('actif');
+      b.onclick = () => {
+        const k = String(v);
+        if (ensemble.has(k)) { ensemble.delete(k); b.classList.remove('actif'); }
+        else { ensemble.add(k); b.classList.add('actif'); }
+        f.matailleActive = false;
+      };
+      zone.appendChild(b);
+    });
+  }
+
+  function unique(zoneId, valeurs, cle) {
+    const zone = document.getElementById(zoneId);
+    zone.innerHTML = '';
+    valeurs.forEach(v => {
+      const code = v.code !== undefined ? v.code : v;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = v.nom || v;
+      if (String(f[cle]) === String(code)) b.classList.add('actif');
+      b.onclick = () => {
+        const deja = String(f[cle]) === String(code);
+        zone.querySelectorAll('button').forEach(x => x.classList.remove('actif'));
+        f[cle] = deja ? null : code;
+        if (!deja) b.classList.add('actif');
+      };
+      zone.appendChild(b);
+    });
+  }
+
+  function construireFiltres() {
+    unique('f-categorie', categories.map(c => ({ code: c.id, nom: c.nom })), 'categorie');
+    multi('f-taille', TAILLES, f.tailles);
+    multi('f-pointure', POINTURES, f.pointures, libellePointure);
+    unique('f-genre', GENRES_ARTICLE, 'genre');
+    unique('f-etat', ETATS, 'etat');
+    multi('f-cout', [1,2,3,4,5,6], f.couts);
+    unique('f-tri', [
+      { code:'recent', nom:'Nouveautés' },
+      { code:'prix',   nom:'Moins cher' },
+      { code:'etat',   nom:'Meilleur état' },
+    ], 'tri');
+
+    const zc = document.getElementById('f-couleur');
+    zc.innerHTML = '';
+    COULEURS.forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pastille-couleur' + (f.couleur === c.nom ? ' actif' : '');
+      b.title = c.nom;
+      b.setAttribute('aria-label', c.nom);
+      if (c.hex === 'motif') b.style.background = 'repeating-linear-gradient(45deg,#1A1A2E 0 5px,#fff 5px 10px)';
+      else if (c.hex === 'multi') b.style.background = 'linear-gradient(90deg,#C23B3B,#E8C547,#4A8B45,#3A5A9B)';
+      else b.style.background = c.hex;
+      b.onclick = () => { f.couleur = f.couleur === c.nom ? null : c.nom; construireFiltres(); };
+      zc.appendChild(b);
+    });
+  }
+
+  function ouvrirFiltres() {
+    construireFiltres();
+    voile.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function fermerFiltres() {
+    voile.hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('appliquer').addEventListener('click', () => {
+    fermerFiltres(); construireRubans(); charger();
+  });
+  document.getElementById('effacer').addEventListener('click', () => {
+    f.categorie = null; f.genre = null; f.couleur = null; f.etat = null;
+    f.tailles.clear(); f.pointures.clear(); f.couts.clear();
+    f.matailleActive = false; f.tri = 'recent';
+    construireFiltres();
+  });
+  voile.addEventListener('click', (e) => { if (e.target === voile) fermerFiltres(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !voile.hidden) fermerFiltres();
+  });
+})();
+</script>
+</body>
+</html>
