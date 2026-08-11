@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Créer mon compte</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body style="padding-bottom:0">
+
+<div style="max-width:420px;margin:0 auto">
+
+  <header class="barre-haut">
+    <a href="index.html" class="bouton-rond" aria-label="Retour">←</a>
+    <span class="titre">Créer mon compte</span>
+  </header>
+
+  <main class="page" style="padding-top:14px">
+
+    <!-- Progression -->
+    <div style="display:flex;gap:6px;margin-bottom:18px">
+      <div class="etape-barre" data-e="1" style="flex:1;height:4px;border-radius:2px;background:#4A2480"></div>
+      <div class="etape-barre" data-e="2" style="flex:1;height:4px;border-radius:2px;background:#D4C5EF"></div>
+      <div class="etape-barre" data-e="3" style="flex:1;height:4px;border-radius:2px;background:#D4C5EF"></div>
+    </div>
+
+    <div id="msg" class="encart encart-erreur" hidden></div>
+
+    <form id="formulaire" novalidate>
+
+      <!-- ── Étape 1 : identité ── -->
+      <section data-etape="1">
+        <div class="champ">
+          <label>Prénom et nom</label>
+          <div class="ligne-champs">
+            <input type="text" id="prenom" placeholder="Léa" autocomplete="given-name" required>
+            <input type="text" id="nom"    placeholder="Martin" autocomplete="family-name" required>
+          </div>
+        </div>
+
+        <div class="champ">
+          <label for="classe">Classe</label>
+          <select id="classe" required>
+            <option value="">Sélectionner ta classe</option>
+          </select>
+        </div>
+
+        <div class="champ">
+          <label for="annee">Année de naissance</label>
+          <select id="annee" required>
+            <option value="">Sélectionner</option>
+          </select>
+        </div>
+
+        <button type="button" class="btn suivant" data-vers="2">Continuer</button>
+      </section>
+
+      <!-- ── Étape 2 : tailles ── -->
+      <section data-etape="2" hidden>
+        <p class="secondaire" style="margin-bottom:14px">
+          Ces informations servent à te proposer les vêtements à ta taille.
+        </p>
+
+        <div class="champ">
+          <label>Genre</label>
+          <div class="choix" id="choix-genre"></div>
+        </div>
+
+        <div class="champ">
+          <label>Taille de vêtement</label>
+          <div class="choix" id="choix-taille"></div>
+        </div>
+
+        <div class="champ">
+          <label>Pointure <span class="micro">(facultatif)</span></label>
+          <div class="choix" id="choix-pointure"></div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:18px">
+          <button type="button" class="btn btn-secondaire precedent" data-vers="1">Retour</button>
+          <button type="button" class="btn suivant" data-vers="3">Continuer</button>
+        </div>
+      </section>
+
+      <!-- ── Étape 3 : compte ── -->
+      <section data-etape="3" hidden>
+        <div class="champ">
+          <label for="email">Adresse e-mail</label>
+          <input type="email" id="email" placeholder="ton.email@exemple.com" autocomplete="email" required>
+          <p class="micro" style="margin-top:4px">
+            Sert à te connecter et à recevoir les infos sur tes réservations.
+          </p>
+        </div>
+
+        <div class="champ">
+          <label for="mdp">Mot de passe</label>
+          <input type="password" id="mdp" placeholder="Au moins 6 caractères"
+                 autocomplete="new-password" minlength="6" required>
+        </div>
+
+        <div class="champ">
+          <label for="whatsapp">Numéro WhatsApp <span class="micro">(facultatif)</span></label>
+          <input type="tel" id="whatsapp" placeholder="06 12 34 56 78" autocomplete="tel">
+          <p class="micro" style="margin-top:4px">
+            Permet à un bénévole de te joindre si besoin.
+          </p>
+        </div>
+
+        <div class="case">
+          <input type="checkbox" id="reglement" required>
+          <label for="reglement">
+            J'accepte le <a href="infos.html">règlement de la Frip'</a>. Je comprends
+            que les jetons ne sont pas remboursables.
+          </label>
+        </div>
+
+        <div class="case">
+          <input type="checkbox" id="consentement">
+          <label for="consentement">
+            Je suis mineur·e et mon responsable légal a donné son accord.
+          </label>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button type="button" class="btn btn-secondaire precedent" data-vers="2">Retour</button>
+          <button type="submit" class="btn" id="valider">Créer mon compte</button>
+        </div>
+      </section>
+
+    </form>
+
+    <p class="centre secondaire" style="margin:18px 0 28px">
+      Déjà un compte ? <a href="index.html" style="font-weight:900">Se connecter</a>
+    </p>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  const msg = document.getElementById('msg');
+  const choix = { genre: null, taille: null, pointure: null };
+
+  function erreur(t) {
+    msg.textContent = t; msg.hidden = false;
+    msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  const nettoyer = () => msg.hidden = true;
+
+  // ── Remplissage des listes ──
+  const selClasse = document.getElementById('classe');
+  CLASSES.forEach(c => selClasse.add(new Option(c, c)));
+
+  const selAnnee = document.getElementById('annee');
+  const actuelle = new Date().getFullYear();
+  for (let a = actuelle - 13; a >= actuelle - 25; a--) selAnnee.add(new Option(a, a));
+
+  function pastilles(conteneur, valeurs, cle) {
+    const zone = document.getElementById(conteneur);
+    valeurs.forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = v.nom || v;
+      b.dataset.valeur = v.code || v;
+      b.addEventListener('click', () => {
+        const deja = choix[cle] === b.dataset.valeur;
+        zone.querySelectorAll('button').forEach(x => x.classList.remove('actif'));
+        if (deja) { choix[cle] = null; }
+        else { b.classList.add('actif'); choix[cle] = b.dataset.valeur; }
+      });
+      zone.appendChild(b);
+    });
+  }
+  pastilles('choix-genre',    GENRES,    'genre');
+  pastilles('choix-taille',   TAILLES,   'taille');
+  pastilles('choix-pointure', POINTURES, 'pointure');
+
+  // ── Navigation entre les étapes ──
+  function allerA(n) {
+    nettoyer();
+    document.querySelectorAll('[data-etape]').forEach(s => {
+      s.hidden = s.dataset.etape !== String(n);
+    });
+    document.querySelectorAll('.etape-barre').forEach(b => {
+      b.style.background = Number(b.dataset.e) <= n ? '#4A2480' : '#D4C5EF';
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function etape1Valide() {
+    if (!document.getElementById('prenom').value.trim()) return 'Indique ton prénom.';
+    if (!document.getElementById('nom').value.trim())    return 'Indique ton nom.';
+    if (!selClasse.value) return 'Sélectionne ta classe.';
+    if (!selAnnee.value)  return 'Sélectionne ton année de naissance.';
+    return null;
+  }
+  function etape2Valide() {
+    if (!choix.genre)  return 'Choisis un genre de vêtements.';
+    if (!choix.taille) return 'Choisis ta taille de vêtement.';
+    return null;
+  }
+
+  document.querySelectorAll('.suivant').forEach(b => {
+    b.addEventListener('click', () => {
+      const vers = Number(b.dataset.vers);
+      const pb = vers === 2 ? etape1Valide() : etape2Valide();
+      if (pb) { erreur(pb); return; }
+      allerA(vers);
+    });
+  });
+  document.querySelectorAll('.precedent').forEach(b => {
+    b.addEventListener('click', () => allerA(Number(b.dataset.vers)));
+  });
+
+  // ── Création du compte ──
+  document.getElementById('formulaire').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    nettoyer();
+
+    const email = document.getElementById('email').value.trim();
+    const mdp   = document.getElementById('mdp').value;
+    const annee = Number(selAnnee.value);
+    const mineur = (new Date().getFullYear() - annee) < 18;
+
+    if (!email.includes('@'))  { erreur('Saisis une adresse e-mail valide.'); return; }
+    if (mdp.length < 6)        { erreur('Le mot de passe doit faire au moins 6 caractères.'); return; }
+    if (!document.getElementById('reglement').checked) {
+      erreur("Tu dois accepter le règlement de la Frip'."); return;
+    }
+    if (mineur && !document.getElementById('consentement').checked) {
+      erreur("Comme tu es mineur·e, l'accord de ton responsable légal est nécessaire."); return;
+    }
+
+    const bouton = document.getElementById('valider');
+    bouton.disabled = true;
+    bouton.textContent = 'Création…';
+
+    try {
+      const { error } = await db.auth.signUp({
+        email,
+        password: mdp,
+        options: {
+          emailRedirectTo: location.href.replace(/inscription\.html.*$/, '') + 'catalogue.html',
+          data: {
+            prenom: document.getElementById('prenom').value.trim(),
+            nom:    document.getElementById('nom').value.trim(),
+            classe: selClasse.value,
+            annee_naissance: annee,
+            whatsapp: document.getElementById('whatsapp').value.trim() || null,
+            genre:    choix.genre,
+            taille:   choix.taille,
+            pointure: choix.pointure ? Number(choix.pointure) : null,
+            consentement: document.getElementById('consentement').checked,
+          },
+        },
+      });
+      if (error) throw error;
+      location.href = 'index.html?inscrit=1';
+    } catch (err) {
+      erreur(messageErreur(err));
+      bouton.disabled = false;
+      bouton.textContent = 'Créer mon compte';
+    }
+  });
+})();
+</script>
+</body>
+</html>

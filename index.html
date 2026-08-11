@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Connexion</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body style="padding-bottom:0">
+
+<div style="max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column">
+
+  <!-- Bandeau logo -->
+  <header style="background:#D6C9EC;padding:34px 20px 30px;text-align:center">
+    <div style="display:inline-block;background:#1A1A2E;color:#fff;font-size:11px;font-weight:900;
+                letter-spacing:.1em;padding:4px 13px;border-radius:4px;margin-bottom:7px">LE MONDE DE</div>
+    <div style="font-size:42px;font-weight:900;color:#9B72CF;line-height:.95;letter-spacing:-1px">FRIP'</div>
+    <div style="font-size:32px;font-weight:900;color:#1A1A2E;line-height:1;margin-bottom:10px">HOCHE</div>
+    <div style="display:inline-block;background:#B8CC6E;color:#2E3A10;font-size:11px;font-weight:900;
+                padding:5px 14px;border-radius:4px;letter-spacing:.05em">LA FRIPE DU LYCÉE HOCHE</div>
+  </header>
+
+  <main class="page" style="padding-top:26px;flex:1">
+
+    <h2 style="font-size:19px;margin-bottom:3px">Content de te revoir</h2>
+    <p class="secondaire" style="margin-bottom:18px">Connecte-toi pour accéder à ton compte</p>
+
+    <!-- Messages -->
+    <div id="msg" class="encart encart-erreur" hidden></div>
+    <div id="info" class="encart encart-ok" hidden></div>
+
+    <form id="formulaire" novalidate>
+
+      <div class="champ">
+        <label for="email">Adresse e-mail</label>
+        <input type="email" id="email" name="email" autocomplete="email"
+               placeholder="ton.email@exemple.com" required>
+      </div>
+
+      <div class="champ">
+        <label for="mdp">Mot de passe</label>
+        <div style="position:relative">
+          <input type="password" id="mdp" name="mdp" autocomplete="current-password"
+                 placeholder="••••••••" required style="padding-right:44px">
+          <button type="button" id="voir" aria-label="Afficher le mot de passe"
+                  style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
+                         background:none;border:none;cursor:pointer;font-size:17px;
+                         padding:6px;color:#9B72CF;width:auto">👁</button>
+        </div>
+      </div>
+
+      <div style="text-align:right;margin-bottom:18px">
+        <button type="button" class="btn-lien" id="oubli">Mot de passe oublié ?</button>
+      </div>
+
+      <button type="submit" class="btn" id="valider">Se connecter</button>
+
+    </form>
+
+    <p class="centre secondaire" style="margin:18px 0 26px">
+      Pas encore de compte ?
+      <a href="inscription.html" style="font-weight:900">S'inscrire</a>
+    </p>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  const form    = document.getElementById('formulaire');
+  const bouton  = document.getElementById('valider');
+  const msg     = document.getElementById('msg');
+  const info    = document.getElementById('info');
+  const champMdp= document.getElementById('mdp');
+
+  function erreur(t) { msg.textContent = t; msg.hidden = false; info.hidden = true; }
+  function succes(t) { info.textContent = t; info.hidden = false; msg.hidden = true; }
+  function nettoyer() { msg.hidden = true; info.hidden = true; }
+
+  // Messages venant d'une autre page
+  const params = new URLSearchParams(location.search);
+  if (params.has('desactive')) erreur("Ce compte a été désactivé. Contacte la Frip'.");
+  if (params.has('inscrit'))   succes("Compte créé ! Vérifie ta boîte mail pour confirmer ton adresse.");
+  if (params.has('deconnecte'))succes('Tu as été déconnectée.');
+
+  // Déjà connectée → on passe directement au catalogue
+  db.auth.getSession().then(({ data }) => {
+    if (data.session) location.replace('catalogue.html');
+  });
+
+  // Afficher / masquer le mot de passe
+  document.getElementById('voir').addEventListener('click', () => {
+    const cache = champMdp.type === 'password';
+    champMdp.type = cache ? 'text' : 'password';
+    document.getElementById('voir').textContent = cache ? '🙈' : '👁';
+  });
+
+  // Connexion
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    nettoyer();
+
+    const email = document.getElementById('email').value.trim();
+    const mdp   = champMdp.value;
+
+    if (!email || !mdp) { erreur('Remplis les deux champs.'); return; }
+
+    bouton.disabled = true;
+    bouton.textContent = 'Connexion…';
+
+    try {
+      const { error } = await db.auth.signInWithPassword({ email, password: mdp });
+      if (error) throw error;
+      location.href = 'catalogue.html';
+    } catch (err) {
+      erreur(messageErreur(err));
+      bouton.disabled = false;
+      bouton.textContent = 'Se connecter';
+    }
+  });
+
+  // Mot de passe oublié
+  document.getElementById('oubli').addEventListener('click', async () => {
+    nettoyer();
+    const email = document.getElementById('email').value.trim();
+    if (!email) { erreur('Saisis ton adresse e-mail, puis reclique sur ce lien.'); return; }
+
+    try {
+      const retour = location.href.replace(/index\.html.*$/, '') + 'nouveau-mot-de-passe.html';
+      const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: retour });
+      if (error) throw error;
+      succes('Si un compte existe avec cette adresse, un lien vient de t\'être envoyé.');
+    } catch (err) {
+      erreur(messageErreur(err));
+    }
+  });
+})();
+</script>
+</body>
+</html>
