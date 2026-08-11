@@ -107,8 +107,8 @@
         </div>
 
         <div class="champ">
-          <label for="whatsapp">Numéro de contact pour les retraits <span class="micro">(facultatif)</span></label>
-          <input type="tel" id="whatsapp" placeholder="06 12 34 56 78" autocomplete="tel">
+          <label for="whatsapp">Numéro de contact pour les retraits</label>
+          <input type="tel" id="whatsapp" placeholder="06 12 34 56 78" autocomplete="tel" required>
           <p class="micro" style="margin-top:4px">
             Permet à un bénévole de te joindre au sujet d'une réservation.
           </p>
@@ -317,8 +317,13 @@
     const annee  = Number(selAnnee.value);
     const mineur = peutEtreMineur(annee);
 
+    const tel = document.getElementById('whatsapp').value.trim();
+
     if (!email.includes('@')) { erreur('Saisis une adresse e-mail valide.'); return; }
     if (mdp.length < 6)       { erreur('Le mot de passe doit faire au moins 6 caractères.'); return; }
+    if (!telValide(tel)) {
+      erreur('Saisis un numéro de téléphone valide (10 chiffres).'); return;
+    }
     if (!document.getElementById('reglement').checked) {
       erreur("Tu dois accepter le règlement de la Frip'."); return;
     }
@@ -341,7 +346,7 @@
             nom:    document.getElementById('nom').value.trim(),
             classe: selClasse.value,
             annee_naissance: annee,
-            whatsapp: document.getElementById('whatsapp').value.trim() || null,
+            whatsapp: normaliserTel(tel),
             genre:     choix.genre,
             tailles:   [...choix.tailles],
             pointures: [...choix.pointures].map(Number),
