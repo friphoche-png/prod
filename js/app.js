@@ -14,10 +14,25 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 
 // ─── Listes de valeurs ─────────────────────────────
 
-const TAILLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Unique'];
+const TAILLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
+// 46 représente « 46 et plus » — voir libellePointure()
 const POINTURES = [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
 
+/** Affiche « 46+ » pour la dernière pointure. */
+function libellePointure(p) {
+  return p >= 46 ? '46+' : String(p);
+}
+
+// Genres proposés dans le profil d'une personne
 const GENRES = [
+  { code: 'femme', nom: 'Femme' },
+  { code: 'homme', nom: 'Homme' },
+  { code: 'autre', nom: 'Autre' },
+];
+
+// Genres possibles pour un vêtement (« unisexe » reste utile ici)
+const GENRES_ARTICLE = [
   { code: 'femme',   nom: 'Femme' },
   { code: 'homme',   nom: 'Homme' },
   { code: 'unisexe', nom: 'Unisexe' },
@@ -50,14 +65,67 @@ const COULEURS = [
   { nom: 'Motif',    hex: 'motif'   }, { nom: 'Multicolore', hex: 'multi' },
 ];
 
-const CLASSES = [
-  'Seconde 1','Seconde 2','Seconde 3','Seconde 4','Seconde 5','Seconde 6',
-  'Première 1','Première 2','Première 3','Première 4','Première 5','Première 6',
-  'Terminale 1','Terminale 2','Terminale 3','Terminale 4','Terminale 5','Terminale 6',
-  'CPGE 1re année','CPGE 2e année','Autre',
-];
-
 const PRIX_JETON = 0.50;
+
+/** Année minimale de naissance acceptée à l'inscription. */
+const ANNEE_MIN = 1960;
+
+/** Marge de sécurité : on ne propose pas d'année trop récente. */
+function anneeMax() { return new Date().getFullYear() - 6; }
+
+/**
+ * Vrai si la personne est, ou peut être, mineure.
+ * On ne connaît que l'année : en cas de doute, on répond vrai.
+ */
+function peutEtreMineur(annee) {
+  if (!annee) return true;
+  return (new Date().getFullYear() - annee) <= 18;
+}
+
+
+// ─── Données chargées depuis la base ───────────────
+
+let _classes = null;
+
+/** Liste des classes, groupées par niveau. */
+async function chargerClasses() {
+  if (_classes) return _classes;
+  const { data, error } = await db.from('classes')
+    .select('nom, niveau, ordre').eq('actif', true).order('ordre');
+  if (error || !data) return [];
+  _classes = data;
+  return _classes;
+}
+
+/** Remplit une liste déroulante de classes, avec des groupes. */
+async function remplirClasses(select) {
+  const liste = await chargerClasses();
+  const groupes = {};
+  liste.forEach(c => (groupes[c.niveau] ||= []).push(c.nom));
+  Object.entries(groupes).forEach(([niveau, noms]) => {
+    const g = document.createElement('optgroup');
+    g.label = niveau;
+    noms.forEach(n => g.appendChild(new Option(n, n)));
+    select.appendChild(g);
+  });
+}
+
+/** Récupère un texte modifiable (règlement, confidentialité…). */
+async function chargerTexte(cle) {
+  const { data } = await db.from('textes')
+    .select('titre, contenu').eq('cle', cle).single();
+  return data || { titre: '', contenu: 'Texte indisponible pour le moment.' };
+}
+
+/** Rendu très simple du texte : titres, gras et listes. */
+function texteEnHtml(t) {
+  return echapper(t)
+    .replace(/^## (.+)$/gm, '<h3 style="margin:14px 0 6px">$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)(?!\s*<li>)/g, '<ul style="margin:6px 0 6px 18px">$1</ul>')
+    .replace(/\n{2,}/g, '<br><br>');
+}
 
 
 // ─── Session ───────────────────────────────────────
@@ -156,7 +224,8 @@ function motJetons(n) {
 
 /** Taille ou pointure selon la catégorie. */
 function tailleAffichee(article) {
-  return article.pointure ? String(article.pointure) : (article.taille || '—');
+  return article.pointure ? libellePointure(article.pointure)
+                          : (article.taille || '—');
 }
 
 function nomEtat(code) {
