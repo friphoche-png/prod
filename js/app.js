@@ -284,6 +284,40 @@ function messageErreur(err) {
 }
 
 
+// ─── Numéros de téléphone ──────────────────────────
+
+/**
+ * Retire espaces, points et tirets d'un numéro saisi.
+ * « 06 23 88 92 89 » devient « 0623889289 ».
+ */
+function normaliserTel(t) {
+  if (!t) return null;
+  const n = String(t).replace(/[\s.\-()]/g, '');
+  return n || null;
+}
+
+/**
+ * Vérifie un numéro français : 10 chiffres commençant par 0,
+ * ou format international (+33…).
+ */
+function telValide(t) {
+  const n = normaliserTel(t);
+  if (!n) return false;
+  if (/^0[1-9]\d{8}$/.test(n)) return true;          // 0612345678
+  if (/^\+33[1-9]\d{8}$/.test(n)) return true;       // +33612345678
+  if (/^00\d{8,14}$/.test(n)) return true;           // international
+  return false;
+}
+
+/** Affiche un numéro par paires : « 06 23 88 92 89 ». */
+function telAffiche(t) {
+  const n = normaliserTel(t);
+  if (!n) return '';
+  if (/^0\d{9}$/.test(n)) return n.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
+  return n;
+}
+
+
 // ─── Photos ────────────────────────────────────────
 
 /**
