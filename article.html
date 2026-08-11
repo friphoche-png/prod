@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Article</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:520px;margin:0 auto">
+
+  <header class="barre-haut">
+    <button type="button" class="bouton-rond" id="retour" aria-label="Retour">&#8592;</button>
+    <span class="titre">Détail article</span>
+    <button type="button" class="bouton-rond" id="modifier" hidden
+            aria-label="Modifier">&#9998;</button>
+  </header>
+
+  <div id="chargement" class="chargement">Chargement…</div>
+
+  <main id="contenu" hidden>
+
+    <!-- Photos -->
+    <div style="position:relative;background:#E8E0F5">
+      <div id="carrousel" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory"></div>
+      <div id="compteur-photo" class="micro"
+           style="position:absolute;top:9px;right:9px;background:rgba(26,26,46,.6);
+                  color:#fff;padding:3px 9px;border-radius:20px;font-weight:700"></div>
+      <div id="points" style="position:absolute;bottom:9px;left:0;right:0;
+                              display:flex;justify-content:center;gap:5px"></div>
+    </div>
+
+    <div class="page" style="padding-top:14px">
+
+      <div class="rangee" style="align-items:flex-start;margin-bottom:3px">
+        <span class="label" id="ligne-label"></span>
+        <span class="pill" id="statut"></span>
+      </div>
+
+      <h1 id="nom" style="font-size:21px;margin-bottom:2px"></h1>
+      <div id="marque" style="font-size:14px;font-weight:700;color:#7A4FB5;margin-bottom:4px"></div>
+      <div class="micro" id="depot" style="margin-bottom:12px"></div>
+
+      <hr class="trait">
+
+      <div class="grille" style="grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px" id="details"></div>
+
+      <div id="bloc-description" hidden>
+        <div class="titre-section">Description</div>
+        <p class="secondaire" id="description" style="margin-bottom:14px;line-height:1.6"></p>
+      </div>
+
+      <div class="cartouches">
+        <div class="cartouche cartouche-vert">
+          <div class="titre-c">&#129689; Coût</div>
+          <div><span class="nombre" id="cout">–</span>
+               <span style="font-size:12px;font-weight:700;color:#4A7010" id="cout-unite">jetons</span></div>
+        </div>
+        <div class="cartouche cartouche-vert2">
+          <div class="titre-c">&#128179; Ton solde</div>
+          <div><span class="nombre" id="solde">–</span>
+               <span style="font-size:12px;font-weight:700;color:#4A7010" id="solde-unite">jetons</span></div>
+        </div>
+      </div>
+
+      <div id="banniere" class="encart" hidden></div>
+
+      <button type="button" class="btn" id="reserver">Réserver cet article</button>
+      <div style="height:8px"></div>
+      <a href="infos.html" class="btn btn-secondaire"
+         style="text-decoration:none;display:block">&#128172; Contacter la Frip'</a>
+
+      <div style="height:26px"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  const id = new URLSearchParams(location.search).get('id');
+  let profil = null, article = null, solde = 0;
+
+  document.getElementById('retour').addEventListener('click', () => {
+    if (history.length > 1) history.back(); else location.href = 'catalogue.html';
+  });
+
+  (async function demarrer() {
+    profil = await exigerConnexion();
+    if (!profil) return;
+    afficherNavigation('catalogue');
+
+    if (!id) { erreurPage('Article introuvable.'); return; }
+
+    const [res, s, droits] = await Promise.all([
+      db.from('articles')
+        .select('*, marques(nom), categories(nom, chaussures), profils:depose_par(prenom, nom)')
+        .eq('id', id).single(),
+      monSolde(),
+      mesDroits(),
+    ]);
+
+    if (res.error || !res.data) { erreurPage("Cet article n'existe pas ou n'est plus visible."); return; }
+
+    article = res.data;
+    solde = s;
+
+    if (droits.modifier_article) {
+      const b = document.getElementById('modifier');
+      b.hidden = false;
+      b.onclick = () => location.href = 'admin-article.html?id=' + article.id;
+    }
+
+    afficher();
+    document.getElementById('chargement').hidden = true;
+    document.getElementById('contenu').hidden = false;
+  })();
+
+  function erreurPage(t) {
+    document.getElementById('chargement').innerHTML =
+      `<p>${echapper(t)}</p><div style="height:14px"></div>
+       <a href="catalogue.html" class="btn" style="max-width:240px;margin:0 auto;text-decoration:none">Retour au catalogue</a>`;
+  }
+
+  function afficher() {
+    // Photos
+    const car = document.getElementById('carrousel');
+    const photos = article.photos && article.photos.length ? article.photos : [null];
+    car.innerHTML = photos.map(u => u
+      ? `<div style="min-width:100%;height:230px;scroll-snap-align:center;
+                     background:center/cover url('${u}')"></div>`
+      : `<div style="min-width:100%;height:230px;display:flex;align-items:center;
+                     justify-content:center;font-size:46px;color:#9B72CF">&#128087;</div>`
+    ).join('');
+
+    const cpt = document.getElementById('compteur-photo');
+    const pts = document.getElementById('points');
+    if (photos.length > 1) {
+      cpt.textContent = `1 / ${photos.length}`;
+      pts.innerHTML = photos.map((_, i) =>
+        `<span style="width:${i===0?18:6}px;height:6px;border-radius:3px;
+                      background:${i===0?'#9B72CF':'#C4A8EE'}"></span>`).join('');
+      car.addEventListener('scroll', () => {
+        const i = Math.round(car.scrollLeft / car.clientWidth);
+        cpt.textContent = `${i+1} / ${photos.length}`;
+        [...pts.children].forEach((p, j) => {
+          p.style.width = j === i ? '18px' : '6px';
+          p.style.background = j === i ? '#9B72CF' : '#C4A8EE';
+        });
+      });
+    } else { cpt.hidden = true; }
+
+    // Textes
+    const cat = article.categories ? article.categories.nom : '';
+    document.getElementById('ligne-label').textContent =
+      `${cat} · ${tailleAffichee(article)} · #${String(article.numero).padStart(3,'0')}`;
+    document.getElementById('nom').textContent = article.nom;
+
+    const marque = article.marques ? article.marques.nom : '';
+    const zm = document.getElementById('marque');
+    if (marque && marque !== 'Sans marque') zm.textContent = marque; else zm.hidden = true;
+
+    const qui = article.profils ? ` · déposé par ${article.profils.prenom}` : '';
+    document.getElementById('depot').textContent = 'Ajouté le ' + dateCourte(article.cree_le) + qui;
+
+    // Statut
+    const st = STATUTS[article.statut] || STATUTS.disponible;
+    const zs = document.getElementById('statut');
+    zs.textContent = st.nom;
+    zs.className = 'pill ' + st.classe;
+
+    // Détails
+    const chaussures = article.categories && article.categories.chaussures;
+    const details = [
+      [chaussures ? 'Pointure' : 'Taille', tailleAffichee(article)],
+      ['Genre', (GENRES_ARTICLE.find(g => g.code === article.genre) || {}).nom || '—'],
+      ['Couleur', article.couleur || '—'],
+      ['État', nomEtat(article.etat) || '—'],
+      ['Marque', marque || '—'],
+      ['Catégorie', cat || '—'],
+    ];
+    document.getElementById('details').innerHTML = details.map(([l, v]) => `
+      <div class="carte" style="padding:9px 11px">
+        <div class="micro">${l}</div>
+        <div style="font-size:13px;font-weight:700">${echapper(v)}</div>
+      </div>`).join('');
+
+    if (article.description) {
+      document.getElementById('description').textContent = article.description;
+      document.getElementById('bloc-description').hidden = false;
+    }
+
+    // Jetons
+    document.getElementById('cout').textContent = article.cout_jetons;
+    document.getElementById('cout-unite').textContent = motJetons(article.cout_jetons);
+    document.getElementById('solde').textContent = solde;
+    document.getElementById('solde-unite').textContent = motJetons(solde);
+
+    majBouton();
+  }
+
+  function majBouton() {
+    const b = document.getElementById('reserver');
+    const ban = document.getElementById('banniere');
+    ban.hidden = true;
+    b.disabled = false;
+    b.style.background = '';
+
+    if (article.statut === 'vendu') {
+      b.textContent = 'Article vendu'; b.disabled = true;
+      ban.className = 'encart'; ban.style.background = '#EBEBEB'; ban.style.color = '#4A4A5A';
+      ban.textContent = 'Cet article a déjà été vendu.'; ban.hidden = false;
+      return;
+    }
+    if (article.statut === 'reserve') {
+      b.textContent = 'Article réservé'; b.disabled = true;
+      b.style.background = '#9B72CF';
+      ban.className = 'encart encart-info';
+      ban.textContent = 'Cet article est réservé par quelqu\'un d\'autre.'; ban.hidden = false;
+      return;
+    }
+    if (article.statut === 'brouillon') {
+      b.textContent = 'Brouillon — non publié'; b.disabled = true;
+      ban.className = 'encart encart-alerte';
+      ban.textContent = 'Cet article est encore en brouillon : les étudiants ne le voient pas.';
+      ban.hidden = false;
+      return;
+    }
+    if (solde < article.cout_jetons) {
+      const manque = article.cout_jetons - solde;
+      b.textContent = 'Réserver cet article'; b.disabled = true;
+      ban.className = 'encart encart-alerte';
+      ban.textContent = `Il te manque ${manque} ${motJetons(manque)} pour réserver cet article.`;
+      ban.hidden = false;
+      return;
+    }
+    b.textContent = 'Réserver cet article';
+  }
+
+  document.getElementById('reserver').addEventListener('click', async () => {
+    const b = document.getElementById('reserver');
+    b.disabled = true; b.textContent = 'Réservation…';
+    try {
+      const { data, error } = await db.rpc('reserver_article', { p_article: Number(article.id) });
+      if (error) throw error;
+      if (!data.ok) { notifier(data.message, 'erreur'); article.statut = 'reserve'; majBouton(); return; }
+      notifier('Article réservé — passe le récupérer au local', 'ok');
+      setTimeout(() => location.href = 'reservations.html', 900);
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+      b.disabled = false; b.textContent = 'Réserver cet article';
+    }
+  });
+})();
+</script>
+</body>
+</html>

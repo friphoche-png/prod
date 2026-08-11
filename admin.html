@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Espace admin</title>
+<meta name="theme-color" content="#1A1A2E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:520px;margin:0 auto">
+
+  <header class="entete-sombre">
+    <div class="rangee">
+      <div>
+        <h1 id="titre">Espace admin</h1>
+        <div class="sous" id="sous-titre">Chargement…</div>
+      </div>
+      <span class="pill" id="badge"
+            style="background:#4A2480;color:#C4A8EE;font-size:10px">&nbsp;</span>
+    </div>
+  </header>
+
+  <main class="page" style="margin-top:-12px">
+
+    <!-- Compteurs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:13px">
+      <div class="cartouche cartouche-vert">
+        <div class="titre-c">En stock</div>
+        <div class="nombre" id="n-dispo">–</div>
+      </div>
+      <div class="cartouche cartouche-violet">
+        <div class="titre-c">Réservés</div>
+        <div class="nombre" id="n-reserve">–</div>
+      </div>
+      <div class="cartouche" style="background:#EBEBEB">
+        <div class="titre-c" style="color:#4A4A5A">Vendus</div>
+        <div class="nombre" style="color:#2E2E3E" id="n-vendu">–</div>
+      </div>
+    </div>
+
+    <!-- Ajouter -->
+    <a href="admin-article.html" id="lien-ajout"
+       style="display:flex;align-items:center;gap:11px;background:#4A2480;
+              border-radius:12px;padding:14px;margin-bottom:16px;text-decoration:none">
+      <span style="width:36px;height:36px;border-radius:9px;background:#9B72CF;
+                   display:flex;align-items:center;justify-content:center;
+                   font-size:20px;color:#fff;flex-shrink:0">+</span>
+      <span style="flex:1">
+        <span style="display:block;font-size:15px;font-weight:900;color:#fff">Ajouter un article</span>
+        <span style="display:block;font-size:11px;color:#C4A8EE">Photos, taille, marque, jetons</span>
+      </span>
+      <span style="color:#C4A8EE;font-size:17px">&#8250;</span>
+    </a>
+
+    <!-- Brouillons -->
+    <div id="bloc-brouillons" hidden>
+      <div class="titre-section">&#9998; Brouillons à compléter</div>
+      <div id="liste-brouillons"></div>
+      <div style="height:12px"></div>
+    </div>
+
+    <!-- Gestion -->
+    <div class="titre-section">&#9881; Gestion</div>
+    <div id="menu"></div>
+
+    <div style="height:22px"></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+
+  (async function demarrer() {
+    const p = await exigerEquipe();
+    if (!p) return;
+    afficherNavigation('admin');
+    libererReservationsExpirees();
+
+    const admin = p.role === 'admin';
+    document.getElementById('sous-titre').textContent =
+      p.prenom + (admin ? ' · administratrice' : ' · bénévole');
+    document.getElementById('badge').textContent = admin ? 'ADMIN' : 'BÉNÉVOLE';
+
+    const droits = await mesDroits();
+    construireMenu(droits);
+    compter();
+    chargerBrouillons();
+
+    if (!droits.ajouter_article) document.getElementById('lien-ajout').hidden = true;
+  })();
+
+  async function compter() {
+    const paires = [['disponible','n-dispo'], ['reserve','n-reserve'], ['vendu','n-vendu']];
+    for (const [statut, cible] of paires) {
+      const { count } = await db.from('articles')
+        .select('id', { count: 'exact', head: true }).eq('statut', statut);
+      document.getElementById(cible).textContent = count ?? 0;
+    }
+  }
+
+  async function chargerBrouillons() {
+    const { data } = await db.from('articles')
+      .select('id, numero, nom, cree_le')
+      .eq('statut', 'brouillon')
+      .order('cree_le', { ascending: false }).limit(8);
+
+    if (!data || !data.length) return;
+
+    document.getElementById('liste-brouillons').innerHTML = data.map(a => `
+      <a class="ligne" href="admin-article.html?id=${a.id}" style="text-decoration:none">
+        <span style="font-size:17px">&#128087;</span>
+        <span class="contenu">
+          <span class="titre-ligne">#${String(a.numero).padStart(3,'0')} · ${echapper(a.nom)}</span>
+          <span class="micro" style="display:block">${depuis(a.cree_le)}</span>
+        </span>
+        <span class="pill pill-brouillon">Brouillon</span>
+        <span class="fleche">&#8250;</span>
+      </a>`).join('');
+    document.getElementById('bloc-brouillons').hidden = false;
+  }
+
+  function construireMenu(d) {
+    const entrees = [
+      { lien:'admin-articles.html',  icone:'&#128087;', nom:'Tous les articles', ok:true },
+      { lien:'admin-jetons.html',    icone:'&#129689;', nom:'Créditer des jetons', ok:!!d.crediter_jetons },
+      { lien:'admin-etudiants.html', icone:'&#127979;', nom:'Comptes étudiants', ok:!!d.voir_etudiants },
+      { lien:'admin-benevoles.html', icone:'&#128101;', nom:'Comptes bénévoles', ok:!!d.admin },
+      { lien:'admin-reglages.html',  icone:'&#127991;', nom:'Marques, catégories et classes', ok:!!d.admin },
+    ].filter(e => e.ok);
+
+    document.getElementById('menu').innerHTML = entrees.map(e => `
+      <a class="ligne" href="${e.lien}" style="text-decoration:none">
+        <span style="font-size:17px">${e.icone}</span>
+        <span class="contenu"><span class="titre-ligne">${e.nom}</span></span>
+        <span class="fleche">&#8250;</span>
+      </a>`).join('');
+  }
+})();
+</script>
+</body>
+</html>

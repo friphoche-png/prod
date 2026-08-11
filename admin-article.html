@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Article</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:520px;margin:0 auto">
+
+  <header class="barre-haut">
+    <a href="admin.html" class="bouton-rond" aria-label="Fermer">&#10005;</a>
+    <span class="titre" id="titre-page">Nouvel article</span>
+    <span class="pill pill-vendu" id="numero" hidden></span>
+  </header>
+
+  <main class="page" style="padding-top:14px">
+
+    <div id="msg" class="encart encart-erreur" hidden></div>
+    <div id="chargement" class="chargement">Chargement…</div>
+
+    <form id="formulaire" novalidate hidden>
+
+      <!-- Photos -->
+      <div class="champ">
+        <label>Photos <span class="micro">(1 à 3)</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="zone-photos"></div>
+        <input type="file" id="fichier" accept="image/*" hidden>
+        <p class="micro" style="margin-top:5px">
+          Les photos sont automatiquement compressées avant envoi.
+        </p>
+      </div>
+
+      <div class="champ">
+        <label for="nom">Nom de l'article</label>
+        <input type="text" id="nom" placeholder="Ex. Veste en jean vintage" required>
+      </div>
+
+      <div class="champ">
+        <label>Catégorie</label>
+        <div class="choix" id="choix-categorie"></div>
+      </div>
+
+      <!-- Taille ou pointure selon la catégorie -->
+      <div class="champ" id="bloc-taille">
+        <label>Taille</label>
+        <div class="choix" id="choix-taille"></div>
+      </div>
+
+      <div class="champ" id="bloc-pointure" hidden>
+        <label>Pointure</label>
+        <div class="choix" id="choix-pointure"></div>
+      </div>
+
+      <div class="champ">
+        <label>Genre</label>
+        <div class="choix" id="choix-genre"></div>
+      </div>
+
+      <div class="champ">
+        <label for="marque">Marque</label>
+        <input type="text" id="marque" list="liste-marques" placeholder="Rechercher ou saisir" autocomplete="off">
+        <datalist id="liste-marques"></datalist>
+        <p class="micro" id="info-marque" style="margin-top:5px" hidden></p>
+      </div>
+
+      <div class="champ">
+        <label>Couleur</label>
+        <div style="display:flex;gap:7px;flex-wrap:wrap" id="choix-couleur"></div>
+        <p class="micro" id="nom-couleur" style="margin-top:6px">Aucune couleur choisie</p>
+      </div>
+
+      <div class="champ">
+        <label>État</label>
+        <div class="choix" id="choix-etat"></div>
+      </div>
+
+      <div class="champ">
+        <label>Coût en jetons</label>
+        <div class="choix" id="choix-cout"></div>
+      </div>
+
+      <div class="champ">
+        <label for="description">Description</label>
+        <textarea id="description" placeholder="Coupe, matière, détails, défauts éventuels…"></textarea>
+      </div>
+
+      <div class="encart encart-ok" id="note-statut">
+        <span>L'article sera publié comme <strong>disponible</strong> et visible
+        immédiatement dans le catalogue.</span>
+      </div>
+
+      <button type="submit" class="btn" id="publier">Publier l'article</button>
+      <div style="height:8px"></div>
+      <button type="button" class="btn btn-secondaire" id="brouillon">Enregistrer en brouillon</button>
+
+      <div id="zone-suppression" hidden style="margin-top:22px">
+        <hr class="trait">
+        <button type="button" class="btn btn-secondaire" id="supprimer"
+                style="border-color:#E8C547;color:#8A6000">Supprimer cet article</button>
+      </div>
+
+      <div style="height:26px"></div>
+    </form>
+
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  const msg = document.getElementById('msg');
+  const form = document.getElementById('formulaire');
+
+  const etat = {
+    id: null,            // article modifié, ou null si création
+    photos: [],          // adresses des photos
+    categorie: null,     // { id, nom, chaussures }
+    taille: null,
+    pointure: null,
+    genre: null,
+    couleur: null,
+    qualite: null,
+    cout: 2,
+    droits: {},
+    categories: [],
+    marques: [],
+  };
+
+  function erreur(t) {
+    msg.textContent = t; msg.hidden = false;
+    msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  const nettoyer = () => msg.hidden = true;
+
+  // ── Photos ──────────────────────────────────────
+
+  function dessinerPhotos() {
+    const zone = document.getElementById('zone-photos');
+    zone.innerHTML = '';
+
+    etat.photos.forEach((url, i) => {
+      const c = document.createElement('div');
+      c.style.cssText = `position:relative;border-radius:9px;height:82px;
+        background:#E8E0F5 center/cover url("${url}")`;
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.innerHTML = '&#10005;';
+      x.setAttribute('aria-label', 'Retirer cette photo');
+      x.style.cssText = `position:absolute;top:4px;right:4px;width:20px;height:20px;
+        border:none;border-radius:50%;background:#4A2480;color:#fff;font-size:10px;
+        cursor:pointer;padding:0;line-height:1`;
+      x.onclick = () => { etat.photos.splice(i, 1); dessinerPhotos(); };
+      c.appendChild(x);
+      zone.appendChild(c);
+    });
+
+    if (etat.photos.length < 3) {
+      const a = document.createElement('button');
+      a.type = 'button';
+      a.style.cssText = `border:2px dashed #C4A8EE;border-radius:9px;height:82px;
+        background:#fff;color:#9B72CF;font-family:var(--police);font-size:11px;
+        font-weight:700;cursor:pointer;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:3px;width:100%`;
+      a.innerHTML = '<span style="font-size:20px">&#128247;</span><span>Ajouter</span>';
+      a.onclick = () => document.getElementById('fichier').click();
+      zone.appendChild(a);
+    }
+
+    for (let i = zone.children.length; i < 3; i++) {
+      const v = document.createElement('div');
+      v.style.cssText = 'border:2px dashed #EDE8F8;border-radius:9px;height:82px';
+      zone.appendChild(v);
+    }
+  }
+
+  document.getElementById('fichier').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    e.target.value = '';
+    nettoyer();
+    notifier('Envoi de la photo…', 'info');
+    try {
+      etat.photos.push(await envoyerPhotoArticle(f));
+      dessinerPhotos();
+      notifier('Photo ajoutée', 'ok');
+    } catch (err) {
+      erreur("Envoi impossible : " + messageErreur(err));
+    }
+  });
+
+  // ── Pastilles ───────────────────────────────────
+
+  function pastilles(zoneId, valeurs, cle, libelle, apres) {
+    const zone = document.getElementById(zoneId);
+    zone.innerHTML = '';
+    valeurs.forEach(v => {
+      const code = (v && v.code !== undefined) ? v.code : v;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = libelle ? libelle(v) : ((v && v.nom) || v);
+      b.dataset.valeur = code;
+      if (String(etat[cle]) === String(code)) b.classList.add('actif');
+      b.addEventListener('click', () => {
+        const deja = String(etat[cle]) === String(code);
+        zone.querySelectorAll('button').forEach(x => x.classList.remove('actif'));
+        etat[cle] = deja ? null : code;
+        if (!deja) b.classList.add('actif');
+        if (apres) apres(deja ? null : v);
+      });
+      zone.appendChild(b);
+    });
+  }
+
+  function dessinerCouleurs() {
+    const zone = document.getElementById('choix-couleur');
+    zone.innerHTML = '';
+    COULEURS.forEach(c => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pastille-couleur' + (etat.couleur === c.nom ? ' actif' : '');
+      b.title = c.nom;
+      b.setAttribute('aria-label', c.nom);
+      if (c.hex === 'motif') {
+        b.style.background = 'repeating-linear-gradient(45deg,#1A1A2E 0 5px,#fff 5px 10px)';
+      } else if (c.hex === 'multi') {
+        b.style.background = 'linear-gradient(90deg,#C23B3B,#E8C547,#4A8B45,#3A5A9B)';
+      } else {
+        b.style.background = c.hex;
+      }
+      b.onclick = () => {
+        etat.couleur = etat.couleur === c.nom ? null : c.nom;
+        dessinerCouleurs();
+        document.getElementById('nom-couleur').textContent =
+          etat.couleur || 'Aucune couleur choisie';
+      };
+      zone.appendChild(b);
+    });
+  }
+
+  /** Bascule taille ↔ pointure selon la catégorie choisie. */
+  function majTailleOuPointure() {
+    const chaussures = !!(etat.categorie && etat.categorie.chaussures);
+    document.getElementById('bloc-taille').hidden = chaussures;
+    document.getElementById('bloc-pointure').hidden = !chaussures;
+    if (chaussures) etat.taille = null; else etat.pointure = null;
+  }
+
+  // ── Chargement ──────────────────────────────────
+
+  (async function demarrer() {
+    const p = await exigerEquipe();
+    if (!p) return;
+
+    etat.droits = await mesDroits();
+    if (!etat.droits.ajouter_article && !etat.droits.modifier_article) {
+      document.getElementById('chargement').innerHTML =
+        "<p>Tu n'as pas le droit d'ajouter ou de modifier des articles.</p>";
+      return;
+    }
+
+    const [cats, marques] = await Promise.all([
+      db.from('categories').select('id, nom, chaussures').order('ordre'),
+      db.from('marques').select('id, nom').order('nom'),
+    ]);
+    etat.categories = cats.data || [];
+    etat.marques = marques.data || [];
+
+    const dl = document.getElementById('liste-marques');
+    etat.marques.forEach(m => dl.appendChild(new Option(m.nom, m.nom)));
+
+    pastilles('choix-categorie', etat.categories.map(c => ({ code: c.id, nom: c.nom })),
+      'categorie_id', null, (v) => {
+        etat.categorie = v ? etat.categories.find(c => c.id === v.code) : null;
+        majTailleOuPointure();
+      });
+
+    pastilles('choix-taille',   TAILLES, 'taille');
+    pastilles('choix-pointure', POINTURES, 'pointure', libellePointure);
+    pastilles('choix-genre',    GENRES_ARTICLE, 'genre');
+    pastilles('choix-etat',     ETATS, 'qualite');
+    pastilles('choix-cout',     [1,2,3,4,5,6,7,8], 'cout');
+
+    dessinerCouleurs();
+    dessinerPhotos();
+
+    // Mode modification ?
+    const id = new URLSearchParams(location.search).get('id');
+    if (id) await chargerArticle(id);
+
+    document.getElementById('chargement').hidden = true;
+    form.hidden = false;
+  })();
+
+  async function chargerArticle(id) {
+    const { data, error } = await db.from('articles').select('*').eq('id', id).single();
+    if (error || !data) { erreur('Article introuvable.'); return; }
+
+    etat.id = data.id;
+    etat.photos = data.photos || [];
+    etat.taille = data.taille;
+    etat.pointure = data.pointure;
+    etat.genre = data.genre;
+    etat.couleur = data.couleur;
+    etat.qualite = data.etat;
+    etat.cout = data.cout_jetons;
+    etat.categorie_id = data.categorie_id;
+    etat.categorie = etat.categories.find(c => c.id === data.categorie_id) || null;
+
+    document.getElementById('nom').value = data.nom || '';
+    document.getElementById('description').value = data.description || '';
+    document.getElementById('titre-page').textContent = "Modifier l'article";
+    const num = document.getElementById('numero');
+    num.textContent = '#' + String(data.numero).padStart(3, '0');
+    num.hidden = false;
+
+    if (data.marque_id) {
+      const m = etat.marques.find(x => x.id === data.marque_id);
+      if (m) document.getElementById('marque').value = m.nom;
+    }
+
+    document.getElementById('publier').textContent =
+      data.statut === 'brouillon' ? 'Publier l\'article' : 'Enregistrer';
+    document.getElementById('note-statut').hidden = data.statut !== 'brouillon';
+    document.getElementById('brouillon').hidden = data.statut !== 'brouillon';
+    document.getElementById('zone-suppression').hidden = !etat.droits.supprimer_article;
+
+    // Redessiner avec les valeurs chargées
+    pastilles('choix-categorie', etat.categories.map(c => ({ code: c.id, nom: c.nom })),
+      'categorie_id', null, (v) => {
+        etat.categorie = v ? etat.categories.find(c => c.id === v.code) : null;
+        majTailleOuPointure();
+      });
+    pastilles('choix-taille',   TAILLES, 'taille');
+    pastilles('choix-pointure', POINTURES, 'pointure', libellePointure);
+    pastilles('choix-genre',    GENRES_ARTICLE, 'genre');
+    pastilles('choix-etat',     ETATS, 'qualite');
+    pastilles('choix-cout',     [1,2,3,4,5,6,7,8], 'cout');
+    dessinerCouleurs();
+    dessinerPhotos();
+    majTailleOuPointure();
+  }
+
+  // ── Marque : création à la volée ────────────────
+
+  async function marqueId(nom) {
+    const n = (nom || '').trim();
+    if (!n) return null;
+
+    const existe = etat.marques.find(m => m.nom.toLowerCase() === n.toLowerCase());
+    if (existe) return existe.id;
+
+    if (!etat.droits.creer_marque) {
+      throw new Error("Cette marque n'existe pas et tu n'as pas le droit d'en créer.");
+    }
+    const { data, error } = await db.from('marques')
+      .insert({ nom: n }).select('id, nom').single();
+    if (error) throw error;
+    etat.marques.push(data);
+    document.getElementById('liste-marques').appendChild(new Option(data.nom, data.nom));
+    return data.id;
+  }
+
+  document.getElementById('marque').addEventListener('blur', (e) => {
+    const n = e.target.value.trim();
+    const info = document.getElementById('info-marque');
+    if (!n) { info.hidden = true; return; }
+    const existe = etat.marques.some(m => m.nom.toLowerCase() === n.toLowerCase());
+    info.hidden = existe;
+    if (!existe) {
+      info.textContent = `« ${n} » sera ajoutée à la liste des marques.`;
+      info.style.color = '#4A7010';
+    }
+  });
+
+  // ── Enregistrement ──────────────────────────────
+
+  function verifier(complet) {
+    if (!document.getElementById('nom').value.trim()) return "Donne un nom à l'article.";
+    if (!complet) return null;
+    if (etat.photos.length === 0) return 'Ajoute au moins une photo.';
+    if (!etat.categorie_id)       return 'Choisis une catégorie.';
+    if (etat.categorie && etat.categorie.chaussures) {
+      if (!etat.pointure)         return 'Choisis une pointure.';
+    } else if (!etat.taille)      return 'Choisis une taille.';
+    if (!etat.genre)              return 'Choisis un genre.';
+    if (!etat.qualite)            return "Choisis l'état de l'article.";
+    if (!etat.cout)               return 'Indique le coût en jetons.';
+    return null;
+  }
+
+  async function enregistrer(statut) {
+    nettoyer();
+    const pb = verifier(statut !== 'brouillon');
+    if (pb) { erreur(pb); return; }
+
+    const boutons = [document.getElementById('publier'), document.getElementById('brouillon')];
+    boutons.forEach(b => b.disabled = true);
+
+    try {
+      const ligne = {
+        nom: document.getElementById('nom').value.trim(),
+        description: document.getElementById('description').value.trim() || null,
+        categorie_id: etat.categorie_id || null,
+        marque_id: await marqueId(document.getElementById('marque').value),
+        taille:   etat.taille || null,
+        pointure: etat.pointure ? Number(etat.pointure) : null,
+        genre:    etat.genre || null,
+        couleur:  etat.couleur || null,
+        etat:     etat.qualite || null,
+        cout_jetons: Number(etat.cout) || 1,
+        photos:   etat.photos,
+        modifie_le: new Date().toISOString(),
+      };
+
+      if (etat.id) {
+        if (statut) ligne.statut = statut;
+        const { error } = await db.from('articles').update(ligne).eq('id', etat.id);
+        if (error) throw error;
+        notifier('Article enregistré', 'ok');
+      } else {
+        const p = await profilActuel();
+        ligne.statut = statut || 'disponible';
+        ligne.cree_par = p.id;
+        const { error } = await db.from('articles').insert(ligne);
+        if (error) throw error;
+        notifier(statut === 'brouillon' ? 'Brouillon enregistré' : 'Article publié', 'ok');
+      }
+
+      setTimeout(() => location.href = 'admin.html', 700);
+    } catch (err) {
+      erreur(messageErreur(err));
+      boutons.forEach(b => b.disabled = false);
+    }
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    enregistrer(etat.id ? null : 'disponible');
+  });
+
+  document.getElementById('brouillon').addEventListener('click', () => enregistrer('brouillon'));
+
+  document.getElementById('supprimer').addEventListener('click', async () => {
+    if (!confirm('Supprimer définitivement cet article ?')) return;
+    const { error } = await db.from('articles').delete().eq('id', etat.id);
+    if (error) { erreur(messageErreur(error)); return; }
+    notifier('Article supprimé', 'ok');
+    setTimeout(() => location.href = 'admin.html', 700);
+  });
+})();
+</script>
+</body>
+</html>
