@@ -18,7 +18,6 @@
 
   <main class="page" style="padding-top:14px">
 
-    <!-- Progression -->
     <div style="display:flex;gap:6px;margin-bottom:18px">
       <div class="etape-barre" data-e="1" style="flex:1;height:4px;border-radius:2px;background:#4A2480"></div>
       <div class="etape-barre" data-e="2" style="flex:1;height:4px;border-radius:2px;background:#D4C5EF"></div>
@@ -29,7 +28,7 @@
 
     <form id="formulaire" novalidate>
 
-      <!-- ── Étape 1 : identité ── -->
+      <!-- Étape 1 : identité -->
       <section data-etape="1">
         <div class="champ">
           <label>Prénom et nom</label>
@@ -42,7 +41,7 @@
         <div class="champ">
           <label for="classe">Classe</label>
           <select id="classe" required>
-            <option value="">Sélectionner ta classe</option>
+            <option value="">Chargement…</option>
           </select>
         </div>
 
@@ -56,10 +55,11 @@
         <button type="button" class="btn suivant" data-vers="2">Continuer</button>
       </section>
 
-      <!-- ── Étape 2 : tailles ── -->
+      <!-- Étape 2 : tailles -->
       <section data-etape="2" hidden>
         <p class="secondaire" style="margin-bottom:14px">
           Ces informations servent à te proposer les vêtements à ta taille.
+          Tu peux en choisir plusieurs.
         </p>
 
         <div class="champ">
@@ -68,12 +68,13 @@
         </div>
 
         <div class="champ">
-          <label>Taille de vêtement</label>
+          <label>Tailles de vêtement</label>
           <div class="choix" id="choix-taille"></div>
+          <p class="micro" style="margin-top:5px">Plusieurs choix possibles.</p>
         </div>
 
         <div class="champ">
-          <label>Pointure <span class="micro">(facultatif)</span></label>
+          <label>Pointures <span class="micro">(facultatif)</span></label>
           <div class="choix" id="choix-pointure"></div>
         </div>
 
@@ -83,7 +84,7 @@
         </div>
       </section>
 
-      <!-- ── Étape 3 : compte ── -->
+      <!-- Étape 3 : compte -->
       <section data-etape="3" hidden>
         <div class="champ">
           <label for="email">Adresse e-mail</label>
@@ -95,27 +96,35 @@
 
         <div class="champ">
           <label for="mdp">Mot de passe</label>
-          <input type="password" id="mdp" placeholder="Au moins 6 caractères"
-                 autocomplete="new-password" minlength="6" required>
+          <div style="position:relative">
+            <input type="password" id="mdp" placeholder="Au moins 6 caractères"
+                   autocomplete="new-password" minlength="6" required style="padding-right:44px">
+            <button type="button" id="voir" aria-label="Afficher le mot de passe"
+                    style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
+                           background:none;border:none;cursor:pointer;font-size:17px;
+                           padding:6px;color:#9B72CF;width:auto">&#128065;</button>
+          </div>
         </div>
 
         <div class="champ">
-          <label for="whatsapp">Numéro WhatsApp <span class="micro">(facultatif)</span></label>
+          <label for="whatsapp">Numéro de contact pour les retraits <span class="micro">(facultatif)</span></label>
           <input type="tel" id="whatsapp" placeholder="06 12 34 56 78" autocomplete="tel">
           <p class="micro" style="margin-top:4px">
-            Permet à un bénévole de te joindre si besoin.
+            Permet à un bénévole de te joindre au sujet d'une réservation.
           </p>
         </div>
 
         <div class="case">
           <input type="checkbox" id="reglement" required>
           <label for="reglement">
-            J'accepte le <a href="infos.html">règlement de la Frip'</a>. Je comprends
-            que les jetons ne sont pas remboursables.
+            J'accepte le
+            <button type="button" class="btn-lien" id="lien-reglement"
+                    style="text-decoration:underline">règlement de la Frip'</button>.
+            Je comprends que les jetons ne sont pas remboursables.
           </label>
         </div>
 
-        <div class="case">
+        <div class="case" id="bloc-consentement" hidden>
           <input type="checkbox" id="consentement">
           <label for="consentement">
             Je suis mineur·e et mon responsable légal a donné son accord.
@@ -137,12 +146,30 @@
   </main>
 </div>
 
+<!-- Fenêtre du règlement -->
+<div class="voile" id="voile-reglement" hidden>
+  <div class="fenetre">
+    <div class="fenetre-entete" style="background:#E8E0F5">
+      <h2 id="titre-reglement" style="font-size:16px;color:#4A2480">Règlement de la Frip'</h2>
+      <button type="button" class="bouton-rond" id="fermer-reglement"
+              style="background:#4A2480;color:#fff;width:26px;height:26px;font-size:14px"
+              aria-label="Fermer">&#10005;</button>
+    </div>
+    <div class="fenetre-corps">
+      <div id="corps-reglement" style="font-size:13px;line-height:1.6;color:#2E2E3E">
+        <p class="chargement">Chargement…</p>
+      </div>
+      <button type="button" class="btn" id="ok-reglement" style="margin-top:16px">J'ai lu</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/app.js"></script>
 <script>
 (function () {
   const msg = document.getElementById('msg');
-  const choix = { genre: null, taille: null, pointure: null };
+  const choix = { genre: null, tailles: new Set(), pointures: new Set() };
 
   function erreur(t) {
     msg.textContent = t; msg.hidden = false;
@@ -150,35 +177,57 @@
   }
   const nettoyer = () => msg.hidden = true;
 
-  // ── Remplissage des listes ──
+  // ── Listes ──────────────────────────────────────
+
   const selClasse = document.getElementById('classe');
-  CLASSES.forEach(c => selClasse.add(new Option(c, c)));
+  remplirClasses(selClasse).then(() => {
+    selClasse.querySelector('option').textContent = 'Sélectionner ta classe';
+  });
 
   const selAnnee = document.getElementById('annee');
-  const actuelle = new Date().getFullYear();
-  for (let a = actuelle - 13; a >= actuelle - 25; a--) selAnnee.add(new Option(a, a));
+  for (let a = anneeMax(); a >= ANNEE_MIN; a--) selAnnee.add(new Option(a, a));
 
-  function pastilles(conteneur, valeurs, cle) {
-    const zone = document.getElementById(conteneur);
+  function pastillesUniques(zoneId, valeurs, cle) {
+    const zone = document.getElementById(zoneId);
     valeurs.forEach(v => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = v.nom || v;
-      b.dataset.valeur = v.code || v;
+      b.textContent = v.nom;
+      b.dataset.valeur = v.code;
       b.addEventListener('click', () => {
         const deja = choix[cle] === b.dataset.valeur;
         zone.querySelectorAll('button').forEach(x => x.classList.remove('actif'));
-        if (deja) { choix[cle] = null; }
-        else { b.classList.add('actif'); choix[cle] = b.dataset.valeur; }
+        choix[cle] = deja ? null : b.dataset.valeur;
+        if (!deja) b.classList.add('actif');
       });
       zone.appendChild(b);
     });
   }
-  pastilles('choix-genre',    GENRES,    'genre');
-  pastilles('choix-taille',   TAILLES,   'taille');
-  pastilles('choix-pointure', POINTURES, 'pointure');
 
-  // ── Navigation entre les étapes ──
+  function pastillesMultiples(zoneId, valeurs, ensemble, libelle) {
+    const zone = document.getElementById(zoneId);
+    valeurs.forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = libelle ? libelle(v) : v;
+      b.dataset.valeur = v;
+      b.addEventListener('click', () => {
+        if (ensemble.has(b.dataset.valeur)) {
+          ensemble.delete(b.dataset.valeur); b.classList.remove('actif');
+        } else {
+          ensemble.add(b.dataset.valeur); b.classList.add('actif');
+        }
+      });
+      zone.appendChild(b);
+    });
+  }
+
+  pastillesUniques('choix-genre', GENRES, 'genre');
+  pastillesMultiples('choix-taille',   TAILLES,   choix.tailles);
+  pastillesMultiples('choix-pointure', POINTURES, choix.pointures, libellePointure);
+
+  // ── Navigation ──────────────────────────────────
+
   function allerA(n) {
     nettoyer();
     document.querySelectorAll('[data-etape]').forEach(s => {
@@ -187,7 +236,13 @@
     document.querySelectorAll('.etape-barre').forEach(b => {
       b.style.background = Number(b.dataset.e) <= n ? '#4A2480' : '#D4C5EF';
     });
+    if (n === 3) majConsentement();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function majConsentement() {
+    const annee = Number(selAnnee.value);
+    document.getElementById('bloc-consentement').hidden = !peutEtreMineur(annee);
   }
 
   function etape1Valide() {
@@ -198,8 +253,8 @@
     return null;
   }
   function etape2Valide() {
-    if (!choix.genre)  return 'Choisis un genre de vêtements.';
-    if (!choix.taille) return 'Choisis ta taille de vêtement.';
+    if (!choix.genre)        return 'Choisis un genre de vêtements.';
+    if (!choix.tailles.size) return 'Choisis au moins une taille.';
     return null;
   }
 
@@ -215,23 +270,60 @@
     b.addEventListener('click', () => allerA(Number(b.dataset.vers)));
   });
 
-  // ── Création du compte ──
+  // ── Mot de passe visible ────────────────────────
+
+  const champMdp = document.getElementById('mdp');
+  document.getElementById('voir').addEventListener('click', (e) => {
+    const cache = champMdp.type === 'password';
+    champMdp.type = cache ? 'text' : 'password';
+    e.currentTarget.innerHTML = cache ? '&#128584;' : '&#128065;';
+  });
+
+  // ── Fenêtre du règlement ────────────────────────
+
+  const voile = document.getElementById('voile-reglement');
+  let reglementCharge = false;
+
+  async function ouvrirReglement() {
+    voile.hidden = false;
+    document.body.style.overflow = 'hidden';
+    if (reglementCharge) return;
+    const t = await chargerTexte('reglement');
+    document.getElementById('titre-reglement').textContent = t.titre || "Règlement de la Frip'";
+    document.getElementById('corps-reglement').innerHTML = texteEnHtml(t.contenu);
+    reglementCharge = true;
+  }
+  function fermerReglement() {
+    voile.hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('lien-reglement').addEventListener('click', ouvrirReglement);
+  document.getElementById('fermer-reglement').addEventListener('click', fermerReglement);
+  document.getElementById('ok-reglement').addEventListener('click', fermerReglement);
+  voile.addEventListener('click', (e) => { if (e.target === voile) fermerReglement(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !voile.hidden) fermerReglement();
+  });
+
+  // ── Création du compte ──────────────────────────
+
   document.getElementById('formulaire').addEventListener('submit', async (e) => {
     e.preventDefault();
     nettoyer();
 
-    const email = document.getElementById('email').value.trim();
-    const mdp   = document.getElementById('mdp').value;
-    const annee = Number(selAnnee.value);
-    const mineur = (new Date().getFullYear() - annee) < 18;
+    const email  = document.getElementById('email').value.trim();
+    const mdp    = champMdp.value;
+    const annee  = Number(selAnnee.value);
+    const mineur = peutEtreMineur(annee);
 
-    if (!email.includes('@'))  { erreur('Saisis une adresse e-mail valide.'); return; }
-    if (mdp.length < 6)        { erreur('Le mot de passe doit faire au moins 6 caractères.'); return; }
+    if (!email.includes('@')) { erreur('Saisis une adresse e-mail valide.'); return; }
+    if (mdp.length < 6)       { erreur('Le mot de passe doit faire au moins 6 caractères.'); return; }
     if (!document.getElementById('reglement').checked) {
       erreur("Tu dois accepter le règlement de la Frip'."); return;
     }
     if (mineur && !document.getElementById('consentement').checked) {
-      erreur("Comme tu es mineur·e, l'accord de ton responsable légal est nécessaire."); return;
+      erreur("Si tu es mineur·e, l'accord de ton responsable légal est nécessaire."); return;
     }
 
     const bouton = document.getElementById('valider');
@@ -250,9 +342,9 @@
             classe: selClasse.value,
             annee_naissance: annee,
             whatsapp: document.getElementById('whatsapp').value.trim() || null,
-            genre:    choix.genre,
-            taille:   choix.taille,
-            pointure: choix.pointure ? Number(choix.pointure) : null,
+            genre:     choix.genre,
+            tailles:   [...choix.tailles],
+            pointures: [...choix.pointures].map(Number),
             consentement: document.getElementById('consentement').checked,
           },
         },
