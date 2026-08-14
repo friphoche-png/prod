@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Comptes bénévoles</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:560px;margin:0 auto">
+
+  <!-- ══ LISTE ══ -->
+  <div id="vue-liste">
+    <header class="barre-haut">
+      <a href="admin.html" class="bouton-rond" aria-label="Retour">&#8592;</a>
+      <span class="titre">Comptes bénévoles</span>
+      <button type="button" class="bouton-rond" id="ajouter"
+              style="background:#4A2480;color:#fff" aria-label="Ajouter">+</button>
+    </header>
+
+    <main class="page" style="padding-top:13px">
+
+      <div id="chargement" class="chargement">Chargement…</div>
+
+      <div id="contenu" hidden>
+        <div class="titre-section">&#128081; Administratrices</div>
+        <div id="liste-admins"></div>
+
+        <div style="height:14px"></div>
+
+        <div class="titre-section">&#128101; Bénévoles</div>
+        <div id="liste-benevoles"></div>
+
+        <div id="aucun-benevole" class="micro" hidden
+             style="padding:10px 2px">Aucun bénévole pour le moment.</div>
+
+        <button type="button" id="ajouter-bas"
+                style="width:100%;border:2px dashed #C4A8EE;border-radius:10px;
+                       padding:13px;background:#fff;color:#9B72CF;cursor:pointer;
+                       font-family:var(--police);font-size:13px;font-weight:900;
+                       margin-top:10px">
+          + Nommer un bénévole
+        </button>
+      </div>
+
+      <div style="height:22px"></div>
+    </main>
+  </div>
+
+  <!-- ══ DROITS ══ -->
+  <div id="vue-droits" hidden>
+    <header class="entete-sombre" style="padding:12px 14px 20px">
+      <div style="display:flex;align-items:center;gap:11px">
+        <button type="button" class="bouton-rond" id="retour"
+                style="background:#4A2480;color:#C4A8EE" aria-label="Retour">&#8592;</button>
+        <span class="avatar avatar-m" id="d-ini"></span>
+        <div style="flex:1;min-width:0">
+          <h1 id="d-nom" style="font-size:17px"></h1>
+          <div class="sous" id="d-sous"></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="page" style="margin-top:-11px">
+
+      <div id="d-note-admin" hidden class="encart encart-info">
+        <span>Les administratrices disposent de tous les droits. Ils ne
+        peuvent pas être modifiés individuellement.</span>
+      </div>
+
+      <div id="d-formulaire">
+        <div class="titre-section">&#128087; Articles</div>
+        <div class="carte" style="padding:2px 13px 4px;margin-bottom:12px" id="g-articles"></div>
+
+        <div class="titre-section">&#129689; Jetons</div>
+        <div class="carte" style="padding:2px 13px 4px;margin-bottom:12px" id="g-jetons"></div>
+
+        <div class="titre-section">&#9881; Gestion</div>
+        <div class="carte" style="padding:2px 13px 4px;margin-bottom:12px" id="g-gestion"></div>
+
+        <button type="button" class="btn" id="d-enregistrer">Enregistrer les droits</button>
+        <div style="height:8px"></div>
+        <button type="button" class="btn btn-secondaire" id="d-retirer"
+                style="border-color:#E8C547;color:#8A6000">Retirer le rôle de bénévole</button>
+      </div>
+
+      <div style="height:24px"></div>
+    </main>
+  </div>
+
+  <!-- ══ NOMMER ══ -->
+  <div class="voile" id="voile-ajout" hidden>
+    <div class="fenetre">
+      <div class="fenetre-entete" style="background:#E8E0F5">
+        <h2 style="font-size:16px;color:#4A2480">Nommer un bénévole</h2>
+        <button type="button" class="bouton-rond" id="fermer-ajout"
+                style="background:#4A2480;color:#fff;width:26px;height:26px;font-size:14px"
+                aria-label="Fermer">&#10005;</button>
+      </div>
+      <div class="fenetre-corps">
+        <p class="micro" style="margin-bottom:10px">
+          La personne doit déjà avoir un compte sur l'application.
+        </p>
+        <input type="search" id="recherche-ajout" placeholder="Nom, prénom ou classe…"
+               autocomplete="off">
+        <div id="resultats-ajout" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  let moi = null;
+  let cible = null;
+  let droitsCible = {};
+
+  const GROUPES = {
+    'g-articles': [
+      { cle:'ajouter_article',   nom:'Ajouter des articles' },
+      { cle:'modifier_article',  nom:'Modifier des articles' },
+      { cle:'supprimer_article', nom:'Supprimer des articles',
+        aide:'À accorder avec précaution : la suppression est définitive.' },
+    ],
+    'g-jetons': [
+      { cle:'crediter_jetons', nom:'Créditer des jetons',
+        aide:'Permet d\'enregistrer les achats de jetons.' },
+      { cle:'valider_vente',   nom:'Valider une vente',
+        aide:'Passer un article en « vendu » et débiter l\'étudiant.' },
+    ],
+    'g-gestion': [
+      { cle:'voir_etudiants', nom:'Consulter les comptes étudiants' },
+      { cle:'creer_marque',   nom:'Créer des marques' },
+    ],
+  };
+
+  (async function demarrer() {
+    moi = await exigerEquipe();
+    if (!moi) return;
+    afficherNavigation('admin');
+
+    if (moi.role !== 'admin') {
+      document.getElementById('chargement').innerHTML =
+        '<p>Seules les administratrices peuvent gérer les comptes bénévoles.</p>' +
+        '<div style="height:14px"></div>' +
+        '<a href="admin.html" class="btn" style="max-width:220px;margin:0 auto;text-decoration:none">Retour</a>';
+      return;
+    }
+    charger();
+  })();
+
+  // ── Liste ───────────────────────────────────────
+
+  async function charger() {
+    const { data } = await db.from('profils')
+      .select('id, prenom, nom, classe, role, actif')
+      .in('role', ['admin', 'benevole']).eq('actif', true)
+      .order('nom');
+
+    const liste = data || [];
+    const admins = liste.filter(p => p.role === 'admin');
+    const benevoles = liste.filter(p => p.role === 'benevole');
+
+    // Droits de chaque bénévole, pour le résumé
+    const resume = {};
+    if (benevoles.length) {
+      const { data: dr } = await db.from('droits_benevole')
+        .select('*').in('profil_id', benevoles.map(b => b.id));
+      (dr || []).forEach(d => resume[d.profil_id] = d);
+    }
+
+    document.getElementById('liste-admins').innerHTML = admins.map(p => `
+      <div class="ligne statique" style="border-color:#C4A8EE;background:#FBF9FE">
+        <span class="avatar avatar-s" style="background:#4A2480">${initiales(p.prenom, p.nom)}</span>
+        <span class="contenu">
+          <span class="titre-ligne">${echapper(p.prenom)} ${echapper(p.nom)}</span>
+          <span class="micro">Tous les droits</span>
+        </span>
+        <span class="pill pill-violet" style="font-size:9px">ADMIN</span>
+      </div>`).join('');
+
+    document.getElementById('liste-benevoles').innerHTML = benevoles.map(p => {
+      const d = resume[p.id] || {};
+      const actifs = Object.values(GROUPES).flat()
+        .filter(x => d[x.cle]).length;
+      return `
+        <div class="ligne droits-lien" data-id="${p.id}">
+          <span class="avatar avatar-s">${initiales(p.prenom, p.nom)}</span>
+          <span class="contenu">
+            <span class="titre-ligne">${echapper(p.prenom)} ${echapper(p.nom)}</span>
+            <span class="micro">${echapper(p.classe || '—')} · ${actifs} droit${actifs>1?'s':''} sur 7</span>
+          </span>
+          <span class="fleche">&#8250;</span>
+        </div>`;
+    }).join('');
+
+    document.getElementById('aucun-benevole').hidden = benevoles.length > 0;
+
+    document.querySelectorAll('.droits-lien').forEach(d => {
+      d.onclick = () => ouvrirDroits(d.dataset.id);
+    });
+
+    document.getElementById('chargement').hidden = true;
+    document.getElementById('contenu').hidden = false;
+  }
+
+  // ── Droits ──────────────────────────────────────
+
+  document.getElementById('retour').addEventListener('click', () => {
+    document.getElementById('vue-droits').hidden = true;
+    document.getElementById('vue-liste').hidden = false;
+    window.scrollTo(0, 0);
+    charger();
+  });
+
+  async function ouvrirDroits(id) {
+    const { data: p } = await db.from('profils')
+      .select('id, prenom, nom, classe, role, cree_le').eq('id', id).single();
+    if (!p) return;
+    cible = p;
+
+    document.getElementById('vue-liste').hidden = true;
+    document.getElementById('vue-droits').hidden = false;
+    window.scrollTo(0, 0);
+
+    document.getElementById('d-ini').textContent = initiales(p.prenom, p.nom);
+    document.getElementById('d-nom').textContent = `${p.prenom} ${p.nom}`;
+    document.getElementById('d-sous').textContent =
+      `${p.classe || ''} · bénévole depuis ${dateCourte(p.cree_le)}`;
+
+    const { data: d } = await db.from('droits_benevole')
+      .select('*').eq('profil_id', id).single();
+    droitsCible = d || {};
+
+    dessinerDroits();
+  }
+
+  function dessinerDroits() {
+    Object.entries(GROUPES).forEach(([zoneId, lignes]) => {
+      const zone = document.getElementById(zoneId);
+      zone.innerHTML = '';
+      lignes.forEach((l, i) => {
+        const actif = !!droitsCible[l.cle];
+        const d = document.createElement('div');
+        d.style.cssText = `display:flex;align-items:center;gap:10px;padding:11px 0;
+          ${i < lignes.length - 1 ? 'border-bottom:1px solid #EDE8F8' : ''}`;
+        d.innerHTML = `
+          <span style="flex:1">
+            <span style="display:block;font-size:13px;font-weight:700">${l.nom}</span>
+            ${l.aide ? `<span class="micro" style="display:block;margin-top:2px">${l.aide}</span>` : ''}
+          </span>
+          <button type="button" class="bascule" data-cle="${l.cle}"
+                  aria-pressed="${actif}"
+                  style="width:44px;height:25px;border-radius:20px;border:none;
+                         cursor:pointer;position:relative;flex-shrink:0;
+                         background:${actif ? '#4A2480' : '#D4C5EF'}">
+            <span style="position:absolute;top:3px;${actif ? 'right:3px' : 'left:3px'};
+                         width:19px;height:19px;border-radius:50%;background:#fff"></span>
+          </button>`;
+        zone.appendChild(d);
+      });
+    });
+
+    document.querySelectorAll('.bascule').forEach(b => {
+      b.onclick = () => {
+        const c = b.dataset.cle;
+        droitsCible[c] = !droitsCible[c];
+        dessinerDroits();
+      };
+    });
+  }
+
+  document.getElementById('d-enregistrer').addEventListener('click', async () => {
+    const b = document.getElementById('d-enregistrer');
+    b.disabled = true; b.textContent = 'Enregistrement…';
+
+    const ligne = { profil_id: cible.id };
+    Object.values(GROUPES).flat().forEach(x => ligne[x.cle] = !!droitsCible[x.cle]);
+
+    try {
+      const { error } = await db.from('droits_benevole')
+        .upsert(ligne, { onConflict: 'profil_id' });
+      if (error) throw error;
+      notifier('Droits enregistrés', 'ok');
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+    }
+    b.disabled = false; b.textContent = 'Enregistrer les droits';
+  });
+
+  document.getElementById('d-retirer').addEventListener('click', async () => {
+    if (!confirm(`Retirer le rôle de bénévole à ${cible.prenom} ${cible.nom} ?` +
+                 '\n\nSon compte étudiant est conservé.')) return;
+    const { error } = await db.from('profils')
+      .update({ role: 'etudiant' }).eq('id', cible.id);
+    if (error) { notifier(messageErreur(error), 'erreur'); return; }
+    notifier('Rôle retiré', 'ok');
+    document.getElementById('retour').click();
+  });
+
+  // ── Nommer un bénévole ──────────────────────────
+
+  const voile = document.getElementById('voile-ajout');
+  const ouvrirAjout = () => {
+    voile.hidden = false; document.body.style.overflow = 'hidden';
+    document.getElementById('recherche-ajout').value = '';
+    document.getElementById('resultats-ajout').innerHTML = '';
+    setTimeout(() => document.getElementById('recherche-ajout').focus(), 100);
+  };
+  const fermerAjout = () => { voile.hidden = true; document.body.style.overflow = ''; };
+
+  document.getElementById('ajouter').addEventListener('click', ouvrirAjout);
+  document.getElementById('ajouter-bas').addEventListener('click', ouvrirAjout);
+  document.getElementById('fermer-ajout').addEventListener('click', fermerAjout);
+  voile.addEventListener('click', (e) => { if (e.target === voile) fermerAjout(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !voile.hidden) fermerAjout();
+  });
+
+  let minuteur;
+  document.getElementById('recherche-ajout').addEventListener('input', (e) => {
+    clearTimeout(minuteur);
+    const t = e.target.value.trim();
+    if (t.length < 2) { document.getElementById('resultats-ajout').innerHTML = ''; return; }
+    minuteur = setTimeout(() => chercher(t), 300);
+  });
+
+  async function chercher(texte) {
+    const { data } = await db.rpc('chercher_personnes', { p_texte: texte });
+    const liste = (data || []);
+    const zone = document.getElementById('resultats-ajout');
+
+    if (!liste.length) {
+      zone.innerHTML = '<p class="micro" style="padding:8px 2px">Aucun compte trouvé.</p>';
+      return;
+    }
+
+    zone.innerHTML = '';
+    for (const p of liste) {
+      const { data: existant } = await db.from('profils')
+        .select('role').eq('id', p.id).single();
+      const deja = existant && existant.role !== 'etudiant';
+
+      const d = document.createElement('div');
+      d.className = 'ligne';
+      d.innerHTML = `
+        <span class="avatar avatar-s">${initiales(p.prenom, p.nom)}</span>
+        <span class="contenu">
+          <span class="titre-ligne">${echapper(p.prenom)} ${echapper(p.nom)}</span>
+          <span class="micro">${echapper(p.classe || '')}</span>
+        </span>
+        ${deja ? '<span class="pill pill-violet" style="font-size:9px">Déjà membre</span>' : '<span class="fleche">&#8250;</span>'}`;
+      if (deja) { d.style.opacity = '.55'; d.style.cursor = 'default'; }
+      else d.onclick = () => nommer(p);
+      zone.appendChild(d);
+    }
+  }
+
+  async function nommer(p) {
+    if (!confirm(`Nommer ${p.prenom} ${p.nom} bénévole ?`)) return;
+    try {
+      const { error } = await db.from('profils')
+        .update({ role: 'benevole' }).eq('id', p.id);
+      if (error) throw error;
+
+      await db.from('droits_benevole').upsert({
+        profil_id: p.id,
+        ajouter_article: true, modifier_article: true, supprimer_article: false,
+        crediter_jetons: false, valider_vente: true,
+        voir_etudiants: true, creer_marque: true,
+      }, { onConflict: 'profil_id' });
+
+      fermerAjout();
+      notifier(`${p.prenom} est maintenant bénévole`, 'ok');
+      charger();
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+    }
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Réglages</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:560px;margin:0 auto">
+
+  <header class="barre-haut">
+    <a href="admin.html" class="bouton-rond" aria-label="Retour">&#8592;</a>
+    <span class="titre">Réglages</span>
+  </header>
+
+  <div style="background:#F5F2FA;padding:10px 14px;border-bottom:1px solid #D4C5EF">
+    <div style="display:flex;gap:6px;overflow-x:auto" id="onglets"></div>
+  </div>
+
+  <main class="page" style="padding-top:13px">
+
+    <div id="chargement" class="chargement">Chargement…</div>
+
+    <!-- ── Marques ── -->
+    <section data-vue="marques" hidden>
+      <div style="display:flex;gap:8px;margin-bottom:13px">
+        <input type="text" id="nouvelle-marque" placeholder="Nouvelle marque"
+               style="flex:1">
+        <button type="button" class="btn btn-petit" id="ajouter-marque">Ajouter</button>
+      </div>
+      <div style="position:relative;margin-bottom:11px">
+        <span style="position:absolute;left:11px;top:11px;font-size:14px;color:#9B72CF">&#128269;</span>
+        <input type="search" id="filtre-marque" placeholder="Filtrer…" style="padding-left:34px">
+      </div>
+      <div class="micro" id="compteur-marques" style="margin-bottom:8px"></div>
+      <div id="liste-marques"></div>
+    </section>
+
+    <!-- ── Catégories ── -->
+    <section data-vue="categories" hidden>
+      <div class="encart encart-info">
+        <span>Les catégories marquées « chaussures » utilisent les pointures
+        au lieu des tailles.</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:13px">
+        <input type="text" id="nouvelle-categorie" placeholder="Nouvelle catégorie"
+               style="flex:1">
+        <button type="button" class="btn btn-petit" id="ajouter-categorie">Ajouter</button>
+      </div>
+      <div id="liste-categories"></div>
+    </section>
+
+    <!-- ── Classes ── -->
+    <section data-vue="classes" hidden>
+      <div style="display:flex;gap:8px;margin-bottom:9px">
+        <input type="text" id="nouvelle-classe" placeholder="Ex. Terminale 13"
+               style="flex:1">
+        <input type="text" id="niveau-classe" placeholder="Niveau"
+               style="max-width:110px">
+      </div>
+      <button type="button" class="btn" id="ajouter-classe"
+              style="margin-bottom:13px">Ajouter cette classe</button>
+      <div class="micro" id="compteur-classes" style="margin-bottom:8px"></div>
+      <div id="liste-classes"></div>
+    </section>
+
+    <!-- ── Textes ── -->
+    <section data-vue="textes" hidden>
+      <div class="encart encart-info">
+        <span>Ce texte s'affiche à l'inscription et dans les infos pratiques.
+        Utilise ## pour un titre, - pour une puce, **gras** pour insister.</span>
+      </div>
+      <div class="champ">
+        <label for="titre-texte">Titre</label>
+        <input type="text" id="titre-texte">
+      </div>
+      <div class="champ">
+        <label for="contenu-texte">Contenu</label>
+        <textarea id="contenu-texte" style="min-height:280px;font-family:monospace;
+                  font-size:12px;line-height:1.6"></textarea>
+      </div>
+      <button type="button" class="btn" id="enregistrer-texte">Enregistrer</button>
+      <div style="height:8px"></div>
+      <button type="button" class="btn btn-secondaire" id="apercu-texte">Aperçu</button>
+    </section>
+
+    <div style="height:24px"></div>
+  </main>
+</div>
+
+<!-- Aperçu -->
+<div class="voile" id="voile-apercu" hidden>
+  <div class="fenetre">
+    <div class="fenetre-entete" style="background:#E8E0F5">
+      <h2 id="apercu-titre" style="font-size:16px;color:#4A2480"></h2>
+      <button type="button" class="bouton-rond" id="fermer-apercu"
+              style="background:#4A2480;color:#fff;width:26px;height:26px;font-size:14px"
+              aria-label="Fermer">&#10005;</button>
+    </div>
+    <div class="fenetre-corps">
+      <div id="apercu-corps" style="font-size:13px;line-height:1.6;color:#2E2E3E"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  let moi = null;
+  let vue = 'marques';
+  let marques = [], categories = [], classes = [];
+
+  const ONGLETS = [
+    { code:'marques',    nom:'Marques' },
+    { code:'categories', nom:'Catégories' },
+    { code:'classes',    nom:'Classes' },
+    { code:'textes',     nom:'Règlement' },
+  ];
+
+  (async function demarrer() {
+    moi = await exigerEquipe();
+    if (!moi) return;
+    afficherNavigation('admin');
+
+    if (moi.role !== 'admin') {
+      document.getElementById('chargement').innerHTML =
+        '<p>Seules les administratrices peuvent modifier les réglages.</p>' +
+        '<div style="height:14px"></div>' +
+        '<a href="admin.html" class="btn" style="max-width:220px;margin:0 auto;text-decoration:none">Retour</a>';
+      return;
+    }
+
+    construireOnglets();
+    document.getElementById('chargement').hidden = true;
+    montrer('marques');
+  })();
+
+  function construireOnglets() {
+    const zone = document.getElementById('onglets');
+    zone.innerHTML = '';
+    ONGLETS.forEach(o => {
+      const b = document.createElement('button');
+      const actif = vue === o.code;
+      b.textContent = o.nom;
+      b.style.cssText = `padding:6px 14px;border-radius:20px;font-family:var(--police);
+        font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;flex-shrink:0;
+        border:1px solid ${actif ? '#4A2480' : '#D4C5EF'};
+        background:${actif ? '#4A2480' : '#fff'};
+        color:${actif ? '#fff' : '#5A5A7A'}`;
+      b.onclick = () => montrer(o.code);
+      zone.appendChild(b);
+    });
+  }
+
+  function montrer(code) {
+    vue = code;
+    construireOnglets();
+    document.querySelectorAll('[data-vue]').forEach(s => {
+      s.hidden = s.dataset.vue !== code;
+    });
+    if (code === 'marques')    chargerMarques();
+    if (code === 'categories') chargerCategories();
+    if (code === 'classes')    chargerClassesListe();
+    if (code === 'textes')     chargerTexteReglement();
+  }
+
+  // ── Marques ─────────────────────────────────────
+
+  async function chargerMarques() {
+    const { data } = await db.from('marques').select('id, nom').order('nom');
+    marques = data || [];
+    dessinerMarques();
+  }
+
+  function dessinerMarques() {
+    const filtre = document.getElementById('filtre-marque').value.trim().toLowerCase();
+    const liste = filtre ? marques.filter(m => m.nom.toLowerCase().includes(filtre)) : marques;
+
+    document.getElementById('compteur-marques').textContent =
+      `${liste.length} marque${liste.length > 1 ? 's' : ''}`;
+
+    document.getElementById('liste-marques').innerHTML = liste.map(m => `
+      <div class="ligne statique">
+        <span class="contenu"><span class="titre-ligne">${echapper(m.nom)}</span></span>
+        <button type="button" class="btn-lien renommer" data-id="${m.id}"
+                data-nom="${echapper(m.nom)}">Renommer</button>
+      </div>`).join('');
+
+    document.querySelectorAll('.renommer').forEach(b => {
+      b.onclick = async () => {
+        const nouveau = prompt('Nouveau nom de la marque :', b.dataset.nom);
+        if (!nouveau || nouveau.trim() === b.dataset.nom) return;
+        const { error } = await db.from('marques')
+          .update({ nom: nouveau.trim() }).eq('id', b.dataset.id);
+        if (error) { notifier(messageErreur(error), 'erreur'); return; }
+        notifier('Marque renommée', 'ok');
+        chargerMarques();
+      };
+    });
+  }
+
+  document.getElementById('filtre-marque').addEventListener('input', dessinerMarques);
+
+  document.getElementById('ajouter-marque').addEventListener('click', async () => {
+    const champ = document.getElementById('nouvelle-marque');
+    const nom = champ.value.trim();
+    if (!nom) return;
+    if (marques.some(m => m.nom.toLowerCase() === nom.toLowerCase())) {
+      notifier('Cette marque existe déjà', 'erreur'); return;
+    }
+    const { error } = await db.from('marques').insert({ nom });
+    if (error) { notifier(messageErreur(error), 'erreur'); return; }
+    champ.value = '';
+    notifier('Marque ajoutée', 'ok');
+    chargerMarques();
+  });
+
+  // ── Catégories ──────────────────────────────────
+
+  async function chargerCategories() {
+    const { data } = await db.from('categories')
+      .select('id, nom, ordre, chaussures').order('ordre');
+    categories = data || [];
+
+    document.getElementById('liste-categories').innerHTML = categories.map(c => `
+      <div class="ligne statique">
+        <span class="contenu">
+          <span class="titre-ligne">${echapper(c.nom)}</span>
+          <span class="micro">${c.chaussures ? 'Utilise les pointures' : 'Utilise les tailles'}</span>
+        </span>
+        <button type="button" class="bascule-chaussure" data-id="${c.id}"
+                data-actif="${c.chaussures}" aria-pressed="${c.chaussures}"
+                style="width:44px;height:25px;border-radius:20px;border:none;
+                       cursor:pointer;position:relative;flex-shrink:0;
+                       background:${c.chaussures ? '#4A2480' : '#D4C5EF'}">
+          <span style="position:absolute;top:3px;${c.chaussures ? 'right:3px' : 'left:3px'};
+                       width:19px;height:19px;border-radius:50%;background:#fff"></span>
+        </button>
+      </div>`).join('');
+
+    document.querySelectorAll('.bascule-chaussure').forEach(b => {
+      b.onclick = async () => {
+        const nouveau = b.dataset.actif !== 'true';
+        const { error } = await db.from('categories')
+          .update({ chaussures: nouveau }).eq('id', b.dataset.id);
+        if (error) { notifier(messageErreur(error), 'erreur'); return; }
+        chargerCategories();
+      };
+    });
+  }
+
+  document.getElementById('ajouter-categorie').addEventListener('click', async () => {
+    const champ = document.getElementById('nouvelle-categorie');
+    const nom = champ.value.trim();
+    if (!nom) return;
+    const ordre = categories.length ? Math.max(...categories.map(c => c.ordre)) + 1 : 1;
+    const { error } = await db.from('categories').insert({ nom, ordre, chaussures: false });
+    if (error) { notifier(messageErreur(error), 'erreur'); return; }
+    champ.value = '';
+    notifier('Catégorie ajoutée', 'ok');
+    chargerCategories();
+  });
+
+  // ── Classes ─────────────────────────────────────
+
+  async function chargerClassesListe() {
+    const { data } = await db.from('classes')
+      .select('id, nom, niveau, ordre, actif').order('ordre');
+    classes = data || [];
+
+    document.getElementById('compteur-classes').textContent =
+      `${classes.filter(c => c.actif).length} classe(s) active(s) sur ${classes.length}`;
+
+    const groupes = {};
+    classes.forEach(c => (groupes[c.niveau] ||= []).push(c));
+
+    document.getElementById('liste-classes').innerHTML =
+      Object.entries(groupes).map(([niveau, liste]) => `
+        <div class="titre-section" style="margin-top:12px">${echapper(niveau)}</div>
+        ${liste.map(c => `
+          <div class="ligne statique" style="${c.actif ? '' : 'opacity:.55'}">
+            <span class="contenu"><span class="titre-ligne">${echapper(c.nom)}</span></span>
+            <button type="button" class="bascule-classe" data-id="${c.id}"
+                    data-actif="${c.actif}" aria-pressed="${c.actif}"
+                    style="width:44px;height:25px;border-radius:20px;border:none;
+                           cursor:pointer;position:relative;flex-shrink:0;
+                           background:${c.actif ? '#4A2480' : '#D4C5EF'}">
+              <span style="position:absolute;top:3px;${c.actif ? 'right:3px' : 'left:3px'};
+                           width:19px;height:19px;border-radius:50%;background:#fff"></span>
+            </button>
+          </div>`).join('')}
+      `).join('');
+
+    document.querySelectorAll('.bascule-classe').forEach(b => {
+      b.onclick = async () => {
+        const nouveau = b.dataset.actif !== 'true';
+        const { error } = await db.from('classes')
+          .update({ actif: nouveau }).eq('id', b.dataset.id);
+        if (error) { notifier(messageErreur(error), 'erreur'); return; }
+        chargerClassesListe();
+      };
+    });
+  }
+
+  document.getElementById('ajouter-classe').addEventListener('click', async () => {
+    const nom = document.getElementById('nouvelle-classe').value.trim();
+    const niveau = document.getElementById('niveau-classe').value.trim();
+    if (!nom) { notifier('Indique le nom de la classe', 'erreur'); return; }
+    if (!niveau) { notifier('Indique le niveau (ex. Terminale)', 'erreur'); return; }
+
+    const ordre = classes.length ? Math.max(...classes.map(c => c.ordre)) + 1 : 1;
+    const { error } = await db.from('classes').insert({ nom, niveau, ordre, actif: true });
+    if (error) { notifier(messageErreur(error), 'erreur'); return; }
+    document.getElementById('nouvelle-classe').value = '';
+    document.getElementById('niveau-classe').value = '';
+    notifier('Classe ajoutée', 'ok');
+    chargerClassesListe();
+  });
+
+  // ── Règlement ───────────────────────────────────
+
+  async function chargerTexteReglement() {
+    const t = await chargerTexte('reglement');
+    document.getElementById('titre-texte').value = t.titre || '';
+    document.getElementById('contenu-texte').value = t.contenu || '';
+  }
+
+  document.getElementById('enregistrer-texte').addEventListener('click', async () => {
+    const titre = document.getElementById('titre-texte').value.trim();
+    const contenu = document.getElementById('contenu-texte').value.trim();
+    if (!titre || !contenu) { notifier('Remplis le titre et le contenu', 'erreur'); return; }
+
+    const b = document.getElementById('enregistrer-texte');
+    b.disabled = true; b.textContent = 'Enregistrement…';
+    const { error } = await db.from('textes')
+      .upsert({ cle: 'reglement', titre, contenu, modifie_le: new Date().toISOString() },
+              { onConflict: 'cle' });
+    if (error) notifier(messageErreur(error), 'erreur');
+    else notifier('Règlement enregistré', 'ok');
+    b.disabled = false; b.textContent = 'Enregistrer';
+  });
+
+  const voile = document.getElementById('voile-apercu');
+  document.getElementById('apercu-texte').addEventListener('click', () => {
+    document.getElementById('apercu-titre').textContent =
+      document.getElementById('titre-texte').value;
+    document.getElementById('apercu-corps').innerHTML =
+      texteEnHtml(document.getElementById('contenu-texte').value);
+    voile.hidden = false; document.body.style.overflow = 'hidden';
+  });
+  const fermer = () => { voile.hidden = true; document.body.style.overflow = ''; };
+  document.getElementById('fermer-apercu').addEventListener('click', fermer);
+  voile.addEventListener('click', (e) => { if (e.target === voile) fermer(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !voile.hidden) fermer();
+  });
+})();
+</script>
+</body>
+</html>

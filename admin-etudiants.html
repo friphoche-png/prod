@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Comptes étudiants</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:560px;margin:0 auto">
+
+  <!-- ══ LISTE ══ -->
+  <div id="vue-liste">
+    <header class="barre-haut">
+      <a href="admin.html" class="bouton-rond" aria-label="Retour">&#8592;</a>
+      <span class="titre">Comptes étudiants</span>
+      <span class="micro" id="total"></span>
+    </header>
+
+    <div style="background:#F5F2FA;padding:11px 14px 9px;border-bottom:1px solid #D4C5EF">
+      <div style="position:relative;margin-bottom:9px">
+        <span style="position:absolute;left:11px;top:11px;font-size:14px;color:#9B72CF">&#128269;</span>
+        <input type="search" id="recherche" placeholder="Nom, prénom ou classe…"
+               style="padding-left:34px">
+      </div>
+      <div style="display:flex;gap:6px;overflow-x:auto" id="filtres"></div>
+    </div>
+
+    <main class="page" style="padding-top:10px">
+      <div id="liste"></div>
+      <div id="chargement" class="chargement">Chargement…</div>
+      <div id="vide" class="vide" hidden>
+        <div class="grand">&#127979;</div>
+        <div class="titre-vide">Aucun compte</div>
+        <p id="texte-vide">Aucun compte ne correspond à cette recherche.</p>
+      </div>
+      <div style="height:20px"></div>
+    </main>
+  </div>
+
+  <!-- ══ FICHE ══ -->
+  <div id="vue-fiche" hidden>
+    <header class="entete-sombre" style="padding:12px 14px 20px">
+      <div style="display:flex;align-items:center;gap:11px">
+        <button type="button" class="bouton-rond" id="retour"
+                style="background:#4A2480;color:#C4A8EE" aria-label="Retour">&#8592;</button>
+        <span class="avatar avatar-m" id="f-ini"></span>
+        <div style="flex:1;min-width:0">
+          <h1 id="f-nom" style="font-size:17px"></h1>
+          <div class="sous" id="f-sous"></div>
+        </div>
+        <span class="pill" id="f-role" style="background:#4A2480;color:#C4A8EE;font-size:10px"></span>
+      </div>
+    </header>
+
+    <main class="page" style="margin-top:-11px">
+
+      <!-- Solde -->
+      <div class="cartouche cartouche-vert" style="margin-bottom:9px">
+        <div class="rangee">
+          <div>
+            <div class="titre-c">Solde actuel</div>
+            <div><span class="nombre" id="f-solde">–</span>
+                 <span style="font-size:12px;font-weight:700;color:#4A7010" id="f-solde-unite">jetons</span></div>
+          </div>
+          <a class="btn btn-petit" id="f-crediter" href="#"
+             style="text-decoration:none">+ Créditer</a>
+        </div>
+      </div>
+
+      <!-- Compteurs -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:15px">
+        <div class="carte" style="padding:9px;text-align:center">
+          <div style="font-size:17px;font-weight:900;color:#4A2480" id="f-resa">–</div>
+          <div class="micro">Réservations</div>
+        </div>
+        <div class="carte" style="padding:9px;text-align:center">
+          <div style="font-size:17px;font-weight:900;color:#4A2480" id="f-pris">–</div>
+          <div class="micro">Articles pris</div>
+        </div>
+        <div class="carte" style="padding:9px;text-align:center">
+          <div style="font-size:17px;font-weight:900;color:#4A2480" id="f-deposes">–</div>
+          <div class="micro">Déposés</div>
+        </div>
+      </div>
+
+      <!-- Informations -->
+      <div class="titre-section">&#128100; Informations</div>
+      <div class="ligne statique">
+        <span class="contenu"><span class="micro">Classe</span></span>
+        <span class="valeur" id="f-classe">–</span>
+      </div>
+      <div class="ligne statique" id="ligne-tel">
+        <span class="contenu"><span class="micro">Contact</span></span>
+        <a class="valeur" id="f-tel" href="#" style="color:#9B72CF">–</a>
+      </div>
+      <div class="ligne statique">
+        <span class="contenu"><span class="micro">Tailles</span></span>
+        <span class="valeur" id="f-tailles">–</span>
+      </div>
+      <div class="ligne statique">
+        <span class="contenu"><span class="micro">Inscrit le</span></span>
+        <span class="valeur" id="f-inscrit">–</span>
+      </div>
+
+      <!-- Réservations -->
+      <div id="bloc-resa" hidden style="margin-top:15px">
+        <div class="titre-section">&#8987; Réservations en cours</div>
+        <div id="f-liste-resa"></div>
+      </div>
+
+      <!-- Mouvements -->
+      <div style="margin-top:15px">
+        <div class="titre-section">&#128337; Derniers mouvements</div>
+        <div id="f-mouvements"></div>
+      </div>
+
+      <!-- Actions administrateur -->
+      <div id="bloc-admin" hidden style="margin-top:20px">
+        <hr class="trait">
+        <div class="titre-section">&#9881; Administration</div>
+
+        <div class="champ">
+          <label for="f-role-select">Rôle</label>
+          <select id="f-role-select">
+            <option value="etudiant">Étudiant</option>
+            <option value="benevole">Bénévole</option>
+            <option value="admin">Administrateur</option>
+          </select>
+        </div>
+
+        <div class="champ">
+          <label for="f-classe-select">Classe</label>
+          <select id="f-classe-select"></select>
+        </div>
+
+        <button type="button" class="btn" id="f-enregistrer">Enregistrer</button>
+        <div style="height:8px"></div>
+        <button type="button" class="btn btn-secondaire" id="f-desactiver"
+                style="border-color:#E8C547;color:#8A6000"></button>
+      </div>
+
+      <div style="height:24px"></div>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  let moi = null, droits = {};
+  let filtre = 'tous', texte = '';
+  let fiche = null;
+
+  const FILTRES = [
+    { code:'tous',      nom:'Tous' },
+    { code:'jetons',    nom:'Avec jetons' },
+    { code:'resa',      nom:'Réservations' },
+    { code:'equipe',    nom:'Équipe' },
+    { code:'inactifs',  nom:'Désactivés' },
+  ];
+
+  (async function demarrer() {
+    moi = await exigerEquipe();
+    if (!moi) return;
+    afficherNavigation('admin');
+
+    droits = await mesDroits();
+    if (!droits.voir_etudiants) {
+      document.getElementById('chargement').innerHTML =
+        "<p>Tu n'as pas le droit de consulter les comptes.</p>" +
+        '<div style="height:14px"></div>' +
+        '<a href="admin.html" class="btn" style="max-width:220px;margin:0 auto;text-decoration:none">Retour</a>';
+      return;
+    }
+
+    construireFiltres();
+    charger();
+
+    // Ouverture directe d'une fiche
+    const id = new URLSearchParams(location.search).get('id');
+    if (id) ouvrirFiche(id);
+  })();
+
+  // ── Liste ───────────────────────────────────────
+
+  function construireFiltres() {
+    const zone = document.getElementById('filtres');
+    zone.innerHTML = '';
+    FILTRES.forEach(f => {
+      const b = document.createElement('button');
+      const actif = filtre === f.code;
+      b.textContent = f.nom;
+      b.style.cssText = `padding:6px 13px;border-radius:20px;font-family:var(--police);
+        font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;flex-shrink:0;
+        border:1px solid ${actif ? '#4A2480' : '#D4C5EF'};
+        background:${actif ? '#4A2480' : '#fff'};
+        color:${actif ? '#fff' : '#5A5A7A'}`;
+      b.onclick = () => { filtre = f.code; construireFiltres(); charger(); };
+      zone.appendChild(b);
+    });
+  }
+
+  async function charger() {
+    document.getElementById('chargement').hidden = false;
+    document.getElementById('vide').hidden = true;
+    document.getElementById('liste').innerHTML = '';
+
+    let q = db.from('profils')
+      .select('id, prenom, nom, classe, role, actif, cree_le')
+      .order('nom').order('prenom').limit(300);
+
+    if (filtre === 'inactifs')     q = q.eq('actif', false);
+    else                           q = q.eq('actif', true);
+    if (filtre === 'equipe')       q = q.in('role', ['admin', 'benevole']);
+    if (texte) q = q.or(`prenom.ilike.%${texte}%,nom.ilike.%${texte}%,classe.ilike.%${texte}%`);
+
+    const { data, error } = await q;
+    document.getElementById('chargement').hidden = true;
+
+    if (error) {
+      document.getElementById('texte-vide').textContent = messageErreur(error);
+      document.getElementById('vide').hidden = false;
+      return;
+    }
+
+    let liste = data || [];
+
+    // Soldes et réservations, en une requête chacun
+    const ids = liste.map(p => p.id);
+    const soldes = {}, resas = {};
+
+    if (ids.length) {
+      const { data: mvts } = await db.from('mouvements_jetons')
+        .select('etudiant_id, montant').in('etudiant_id', ids);
+      (mvts || []).forEach(m => soldes[m.etudiant_id] = (soldes[m.etudiant_id] || 0) + m.montant);
+
+      const { data: rs } = await db.from('reservations')
+        .select('etudiant_id').in('etudiant_id', ids)
+        .is('annulee_le', null).is('vendue_le', null);
+      (rs || []).forEach(r => resas[r.etudiant_id] = (resas[r.etudiant_id] || 0) + 1);
+    }
+
+    if (filtre === 'jetons') liste = liste.filter(p => (soldes[p.id] || 0) > 0);
+    if (filtre === 'resa')   liste = liste.filter(p => (resas[p.id] || 0) > 0);
+
+    document.getElementById('total').textContent = liste.length;
+
+    if (!liste.length) {
+      document.getElementById('texte-vide').textContent = texte
+        ? 'Aucun compte ne correspond à cette recherche.'
+        : 'Aucun compte dans cette catégorie.';
+      document.getElementById('vide').hidden = false;
+      return;
+    }
+
+    document.getElementById('liste').innerHTML = liste.map(p => {
+      const s = soldes[p.id] || 0;
+      const r = resas[p.id] || 0;
+      const badge = p.role === 'admin' ? '<span class="pill pill-violet" style="font-size:9px">Admin</span>'
+                  : p.role === 'benevole' ? '<span class="pill pill-violet" style="font-size:9px">Bénévole</span>' : '';
+      return `
+        <div class="ligne fiche-lien" data-id="${p.id}">
+          <span class="avatar avatar-s">${initiales(p.prenom, p.nom)}</span>
+          <span class="contenu">
+            <span class="titre-ligne">${echapper(p.prenom)} ${echapper(p.nom)} ${badge}</span>
+            <span class="micro">${echapper(p.classe || '—')}${r ? ` · ${r} réservation${r>1?'s':''}` : ''}${p.actif ? '' : ' · désactivé'}</span>
+          </span>
+          <span class="pill ${s > 0 ? 'pill-dispo' : 'pill-vendu'}">${s}</span>
+          <span class="fleche">&#8250;</span>
+        </div>`;
+    }).join('');
+
+    document.querySelectorAll('.fiche-lien').forEach(d => {
+      d.onclick = () => ouvrirFiche(d.dataset.id);
+    });
+  }
+
+  let minuteur;
+  document.getElementById('recherche').addEventListener('input', (e) => {
+    clearTimeout(minuteur);
+    minuteur = setTimeout(() => { texte = e.target.value.trim(); charger(); }, 350);
+  });
+
+  // ── Fiche ───────────────────────────────────────
+
+  document.getElementById('retour').addEventListener('click', () => {
+    document.getElementById('vue-fiche').hidden = true;
+    document.getElementById('vue-liste').hidden = false;
+    history.replaceState(null, '', 'admin-etudiants.html');
+    window.scrollTo(0, 0);
+    charger();
+  });
+
+  async function ouvrirFiche(id) {
+    document.getElementById('vue-liste').hidden = true;
+    document.getElementById('vue-fiche').hidden = false;
+    window.scrollTo(0, 0);
+
+    const { data: p } = await db.from('profils').select('*').eq('id', id).single();
+    if (!p) { notifier('Compte introuvable', 'erreur'); return; }
+    fiche = p;
+
+    document.getElementById('f-ini').textContent = initiales(p.prenom, p.nom);
+    document.getElementById('f-nom').textContent = `${p.prenom} ${p.nom}`;
+    document.getElementById('f-sous').textContent =
+      `${p.classe || '—'}${p.annee_naissance ? ' · né(e) en ' + p.annee_naissance : ''}`;
+
+    const roles = { admin:'ADMIN', benevole:'BÉNÉVOLE', etudiant:'ÉTUDIANT' };
+    document.getElementById('f-role').textContent = roles[p.role] || '';
+
+    document.getElementById('f-classe').textContent = p.classe || '—';
+
+    const tel = document.getElementById('f-tel');
+    if (p.whatsapp) {
+      tel.textContent = telAffiche(p.whatsapp);
+      tel.href = 'tel:' + normaliserTel(p.whatsapp);
+    } else {
+      document.getElementById('ligne-tel').hidden = true;
+    }
+
+    const tailles = (p.tailles && p.tailles.length ? p.tailles : []).join(', ');
+    const pointures = (p.pointures && p.pointures.length ? p.pointures : []).map(libellePointure).join(', ');
+    document.getElementById('f-tailles').textContent =
+      [tailles, pointures].filter(Boolean).join(' · ') || '—';
+
+    document.getElementById('f-inscrit').textContent = dateCourte(p.cree_le);
+
+    // Crédit
+    const lien = document.getElementById('f-crediter');
+    if (droits.crediter_jetons && p.id !== moi.id) {
+      lien.href = 'admin-jetons.html?etudiant=' + p.id;
+      lien.hidden = false;
+    } else {
+      lien.hidden = true;
+    }
+
+    chargerDetails(p);
+    preparerAdmin(p);
+  }
+
+  async function chargerDetails(p) {
+    const [solde, resa, mvts, deposes, pris] = await Promise.all([
+      soldeDe(p.id),
+      db.from('reservations')
+        .select('id, expire_le, articles(id, numero, nom, cout_jetons)')
+        .eq('etudiant_id', p.id).is('annulee_le', null).is('vendue_le', null),
+      db.from('mouvements_jetons')
+        .select('montant, motif, note, cree_le, articles(numero, nom)')
+        .eq('etudiant_id', p.id).order('cree_le', { ascending: false }).limit(12),
+      db.from('articles').select('id', { count:'exact', head:true }).eq('depose_par', p.id),
+      db.from('reservations').select('id', { count:'exact', head:true })
+        .eq('etudiant_id', p.id).not('vendue_le', 'is', null),
+    ]);
+
+    document.getElementById('f-solde').textContent = solde;
+    document.getElementById('f-solde-unite').textContent = motJetons(solde);
+
+    const reservations = resa.data || [];
+    document.getElementById('f-resa').textContent = reservations.length;
+    document.getElementById('f-pris').textContent = pris.count ?? 0;
+    document.getElementById('f-deposes').textContent = deposes.count ?? 0;
+
+    if (reservations.length) {
+      document.getElementById('f-liste-resa').innerHTML = reservations.map(r => {
+        const a = r.articles; if (!a) return '';
+        const j = joursRestants(r.expire_le);
+        return `
+          <a class="ligne" href="article.html?id=${a.id}" style="text-decoration:none">
+            <span style="font-size:16px">&#128087;</span>
+            <span class="contenu">
+              <span class="titre-ligne">#${String(a.numero).padStart(3,'0')} · ${echapper(a.nom)}</span>
+              <span class="micro">${a.cout_jetons} ${motJetons(a.cout_jetons)} · expire dans ${j} j</span>
+            </span>
+            <span class="fleche">&#8250;</span>
+          </a>`;
+      }).join('');
+      document.getElementById('bloc-resa').hidden = false;
+    }
+
+    const liste = mvts.data || [];
+    const libelles = {
+      depot_vetements:'Dépôt de vêtements', achat_jetons:'Achat de jetons',
+      achat_article:"Retrait d'article", ajustement:'Ajustement', don:'Don',
+    };
+    document.getElementById('f-mouvements').innerHTML = liste.length
+      ? liste.map(m => {
+          const credit = m.montant > 0;
+          const titre = m.articles
+            ? `#${String(m.articles.numero).padStart(3,'0')} · ${m.articles.nom}`
+            : (libelles[m.motif] || 'Mouvement');
+          return `
+            <div class="ligne statique">
+              <span style="font-size:15px;color:${credit ? '#4A7010' : '#C23B3B'}">
+                ${credit ? '&#8599;' : '&#8600;'}</span>
+              <span class="contenu">
+                <span class="titre-ligne" style="font-size:13px">${echapper(titre)}</span>
+                <span class="micro">${dateCourte(m.cree_le)}${m.note ? ' · ' + echapper(m.note) : ''}</span>
+              </span>
+              <span style="font-weight:900;color:${credit ? '#4A7010' : '#C23B3B'}">
+                ${credit ? '+' : ''}${m.montant}</span>
+            </div>`;
+        }).join('')
+      : '<p class="micro" style="padding:8px 2px">Aucun mouvement.</p>';
+  }
+
+  async function preparerAdmin(p) {
+    if (moi.role !== 'admin') return;
+    document.getElementById('bloc-admin').hidden = false;
+
+    document.getElementById('f-role-select').value = p.role;
+
+    const sel = document.getElementById('f-classe-select');
+    sel.innerHTML = '<option value="">—</option>';
+    await remplirClasses(sel);
+    sel.value = p.classe || '';
+
+    const b = document.getElementById('f-desactiver');
+    const soi = p.id === moi.id;
+    b.textContent = p.actif ? 'Désactiver ce compte' : 'Réactiver ce compte';
+    b.disabled = soi;
+    b.title = soi ? 'Tu ne peux pas désactiver ton propre compte.' : '';
+  }
+
+  document.getElementById('f-enregistrer').addEventListener('click', async () => {
+    const role = document.getElementById('f-role-select').value;
+    const classe = document.getElementById('f-classe-select').value || null;
+
+    if (fiche.id === moi.id && role !== 'admin') {
+      notifier('Tu ne peux pas retirer ton propre rôle d\'administratrice.', 'erreur');
+      document.getElementById('f-role-select').value = 'admin';
+      return;
+    }
+
+    const b = document.getElementById('f-enregistrer');
+    b.disabled = true; b.textContent = 'Enregistrement…';
+
+    try {
+      const { error } = await db.from('profils')
+        .update({ role, classe }).eq('id', fiche.id);
+      if (error) throw error;
+
+      // Un nouveau bénévole reçoit des droits par défaut
+      if (role === 'benevole') {
+        await db.from('droits_benevole').upsert({
+          profil_id: fiche.id,
+          ajouter_article: true, modifier_article: true, supprimer_article: false,
+          crediter_jetons: false, valider_vente: true,
+          voir_etudiants: true, creer_marque: true,
+        }, { onConflict: 'profil_id', ignoreDuplicates: true });
+      }
+
+      fiche.role = role; fiche.classe = classe;
+      notifier('Compte mis à jour', 'ok');
+      ouvrirFiche(fiche.id);
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+    }
+    b.disabled = false; b.textContent = 'Enregistrer';
+  });
+
+  document.getElementById('f-desactiver').addEventListener('click', async () => {
+    const actif = !fiche.actif;
+    const mot = actif ? 'Réactiver' : 'Désactiver';
+    if (!confirm(`${mot} le compte de ${fiche.prenom} ${fiche.nom} ?` +
+      (actif ? '' : "\n\nCette personne ne pourra plus se connecter. Son historique est conservé."))) return;
+
+    const { error } = await db.from('profils').update({ actif }).eq('id', fiche.id);
+    if (error) { notifier(messageErreur(error), 'erreur'); return; }
+    fiche.actif = actif;
+    notifier(actif ? 'Compte réactivé' : 'Compte désactivé', 'ok');
+    preparerAdmin(fiche);
+  });
+})();
+</script>
+</body>
+</html>
