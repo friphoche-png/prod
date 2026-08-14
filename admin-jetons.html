@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Frip'Hoche — Créditer des jetons</title>
+<title>Frip'Hoche — Achat de jetons</title>
 <meta name="theme-color" content="#4A2480">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -13,7 +13,7 @@
 
   <header class="barre-haut">
     <a href="admin.html" class="bouton-rond" aria-label="Fermer">&#10005;</a>
-    <span class="titre">Créditer des jetons</span>
+    <span class="titre">Achat de jetons</span>
   </header>
 
   <main class="page" style="padding-top:13px">
@@ -47,27 +47,13 @@
 
       <div id="suite" hidden>
 
-        <!-- Motif -->
-        <div class="champ">
-          <label>Motif du crédit</label>
-          <div style="display:flex;gap:8px">
-            <button type="button" class="carte-motif actif" data-motif="depot_vetements"
-                    style="flex:1;border-radius:10px;padding:12px 9px;text-align:center;
-                           cursor:pointer;font-family:var(--police)">
-              <div style="font-size:19px">&#128087;</div>
-              <div style="font-size:12px;font-weight:900;margin-top:3px">Dépôt vêtements</div>
-            </button>
-            <button type="button" class="carte-motif" data-motif="achat_jetons"
-                    style="flex:1;border-radius:10px;padding:12px 9px;text-align:center;
-                           cursor:pointer;font-family:var(--police)">
-              <div style="font-size:19px">&#128234;</div>
-              <div style="font-size:12px;font-weight:900;margin-top:3px">Achat de jetons</div>
-            </button>
-          </div>
+        <div class="encart encart-info">
+          <span>Les dépôts de vêtements sont crédités automatiquement à la
+          publication de l'article. Cette page sert aux achats de jetons.</span>
         </div>
 
-        <!-- Montant reçu (achat uniquement) -->
-        <div class="champ" id="bloc-euros" hidden>
+        <!-- Montant reçu -->
+        <div class="champ" id="bloc-euros">
           <label for="euros">Montant reçu</label>
           <div class="choix" style="margin-bottom:9px" id="raccourcis"></div>
           <div style="display:flex;align-items:center;gap:9px">
@@ -99,11 +85,6 @@
           </div>
         </div>
 
-        <div class="champ" id="bloc-note">
-          <label for="note">Note <span class="micro">(facultatif)</span></label>
-          <input type="text" id="note" placeholder="Ex. 2 pulls, 1 jean, 1 veste">
-        </div>
-
         <div class="encart encart-info">
           <span>Ce crédit sera enregistré à ton nom dans l'historique de l'étudiant.</span>
         </div>
@@ -122,7 +103,7 @@
   let moi = null;
   let cible = null;           // étudiant sélectionné
   let soldeCible = 0;
-  let motif = 'depot_vetements';
+  const motif = 'achat_jetons';
 
   const msg = document.getElementById('msg');
   function erreur(t) { msg.textContent = t; msg.hidden = false; }
@@ -234,34 +215,6 @@
     document.getElementById('suite').hidden = true;
   });
 
-  // ── Motif ───────────────────────────────────────
-
-  function styleMotif(b, actif) {
-    b.style.background = actif ? '#4A2480' : '#fff';
-    b.style.border = actif ? '1px solid #4A2480' : '1px solid #D4C5EF';
-    b.style.color = actif ? '#fff' : '#5A5A7A';
-  }
-
-  document.querySelectorAll('.carte-motif').forEach(b => {
-    styleMotif(b, b.dataset.motif === motif);
-    b.addEventListener('click', () => {
-      motif = b.dataset.motif;
-      document.querySelectorAll('.carte-motif').forEach(x => styleMotif(x, x === b));
-      const achat = motif === 'achat_jetons';
-      document.getElementById('bloc-euros').hidden = !achat;
-      document.getElementById('bloc-note').hidden = achat;
-      if (!achat) {
-        document.getElementById('euros').value = '';
-        document.getElementById('conversion').textContent = '';
-        document.getElementById('raccourcis').querySelectorAll('button')
-          .forEach(x => x.classList.remove('actif'));
-      } else {
-        document.getElementById('note').value = '';
-      }
-      majJetons();
-    });
-  });
-
   // ── Montant en euros ────────────────────────────
 
   function construireRaccourcis() {
@@ -331,13 +284,11 @@
     const n = parseInt(champ.value, 10);
     if (!n || n < 1) { erreur('Indique un nombre de jetons valide.'); return; }
 
-    let note = null;
-    if (motif === 'achat_jetons') {
-      const e = parseFloat(document.getElementById('euros').value);
-      if (!isNaN(e) && e > 0) note = e.toFixed(2).replace('.', ',') + ' €';
-    } else {
-      note = document.getElementById('note').value.trim() || null;
+    const euros = parseFloat(document.getElementById('euros').value);
+    if (isNaN(euros) || euros <= 0) {
+      erreur('Indique le montant reçu.'); return;
     }
+    const note = euros.toFixed(2).replace('.', ',') + ' €';
 
     const b = document.getElementById('valider');
     b.disabled = true; b.textContent = 'Enregistrement…';
