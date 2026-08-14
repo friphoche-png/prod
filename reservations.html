@@ -39,7 +39,8 @@
       <section id="bloc-resa" hidden style="margin-bottom:18px">
         <div class="encart encart-info">
           <span>Passe au local pendant les horaires d'ouverture pour récupérer
-          tes articles. Les jetons sont débités au retrait.</span>
+          tes articles. Les jetons ont déjà été prélevés : ils te seront rendus
+          si tu annules ou si tu ne viens pas dans les 7 jours.</span>
         </div>
 
         <div class="titre-section">&#8987; En attente de retrait</div>
@@ -52,7 +53,7 @@
 
         <div class="ligne statique" style="background:#F5F2FA">
           <div class="contenu">
-            <div class="micro">Total à régler au retrait</div>
+            <div class="micro">Total déjà prélevé</div>
             <div class="micro" id="rappel-solde"></div>
           </div>
           <div>
@@ -189,32 +190,41 @@
       const icone = (a.photos && a.photos[0]) ? '' : '&#128087;';
       const marque = a.marques ? a.marques.nom : '';
       return `
-        <a class="ligne" href="article.html?id=${a.id}"
-           style="text-decoration:none;align-items:flex-start;padding:10px">
-          <span style="width:56px;height:56px;border-radius:9px;flex-shrink:0;
-                       display:flex;align-items:center;justify-content:center;
-                       font-size:24px;color:#9B72CF;${photo}">${icone}</span>
-          <span class="contenu">
-            <span class="micro" style="color:#9B72CF;font-weight:700;
-                  text-transform:uppercase;letter-spacing:.05em">${echapper(marque)} · ${tailleAffichee(a)} · #${String(a.numero).padStart(3,'0')}</span>
-            <span class="titre-ligne" style="display:block;margin:2px 0 4px">${echapper(a.nom)}</span>
-            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
-              <span class="pill pill-dispo">${a.cout_jetons} ${motJetons(a.cout_jetons)}</span>
-              <span class="micro" style="${urgent ? 'color:#8A6000;font-weight:700' : ''}">
-                ${jours === 0 ? "Expire aujourd'hui" : `Expire dans ${jours} j`}
+        <div class="ligne statique" style="align-items:flex-start;padding:10px;
+             flex-direction:column;gap:9px">
+          <a href="article.html?id=${a.id}"
+             style="display:flex;gap:10px;text-decoration:none;color:inherit;width:100%">
+            <span style="width:56px;height:56px;border-radius:9px;flex-shrink:0;
+                         display:flex;align-items:center;justify-content:center;
+                         font-size:24px;color:#9B72CF;${photo}">${icone}</span>
+            <span style="flex:1;min-width:0">
+              <span class="micro" style="color:#9B72CF;font-weight:700;
+                    text-transform:uppercase;letter-spacing:.05em">${echapper(marque)} · ${tailleAffichee(a)} · #${String(a.numero).padStart(3,'0')}</span>
+              <span class="titre-ligne" style="display:block;margin:2px 0 4px">${echapper(a.nom)}</span>
+              <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                <span class="pill pill-dispo">${a.cout_jetons} ${motJetons(a.cout_jetons)}</span>
+                <span class="micro" style="${urgent ? 'color:#8A6000;font-weight:700' : ''}">
+                  ${jours === 0 ? "Expire aujourd'hui" : `Expire dans ${jours} j`}
+                </span>
               </span>
             </span>
-          </span>
-        </a>`;
+            <span class="fleche">&#8250;</span>
+          </a>
+          <button type="button" class="btn btn-secondaire annuler-resa"
+                  data-id="${r.id}" data-nom="${echapper(a.nom)}"
+                  style="border-color:#E8C547;color:#8A6000;padding:8px;font-size:12px">
+            Annuler cette réservation
+          </button>
+        </div>`;
     }).join('');
 
     const total = liste.reduce((s, r) => s + (r.articles ? r.articles.cout_jetons : 0), 0);
     document.getElementById('total').textContent = total;
     document.getElementById('total-unite').textContent = motJetons(total);
     document.getElementById('rappel-solde').textContent =
-      solde >= total ? `Ton solde : ${solde} ${motJetons(solde)}`
-                     : `Attention : il te manque ${total - solde} ${motJetons(total - solde)}`;
+      'Rendus en cas d\'annulation';
     document.getElementById('bloc-resa').hidden = false;
+    brancherAnnulations();
   }
 
   function afficherHistorique(mvts) {
@@ -247,6 +257,31 @@
             ${credit ? '+' : ''}${m.montant}</span>
         </div>`;
     }).join('');
+  }
+
+  // ── Annulation ──────────────────────────────────
+
+  function brancherAnnulations() {
+    document.querySelectorAll('.annuler-resa').forEach(b => {
+      b.addEventListener('click', async () => {
+        if (!confirm(`Annuler la réservation de « ${b.dataset.nom} » ?\n\n`
+                   + "Les jetons te seront rendus et l'article remis en rayon.")) return;
+
+        b.disabled = true; b.textContent = 'Annulation…';
+        try {
+          const { data, error } = await db.rpc('annuler_reservation',
+            { p_reservation: Number(b.dataset.id) });
+          if (error) throw error;
+          if (!data.ok) { notifier(data.message, 'erreur');
+                          b.disabled = false; b.textContent = 'Annuler cette réservation'; return; }
+          notifier(`Réservation annulée · ${data.rendu} ${motJetons(data.rendu)} rendus`, 'ok');
+          setTimeout(() => location.reload(), 1100);
+        } catch (err) {
+          notifier(messageErreur(err), 'erreur');
+          b.disabled = false; b.textContent = 'Annuler cette réservation';
+        }
+      });
+    });
   }
 
   // ── Fenêtre d'aide ──────────────────────────────
