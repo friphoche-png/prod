@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Créditer des jetons</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:520px;margin:0 auto">
+
+  <header class="barre-haut">
+    <a href="admin.html" class="bouton-rond" aria-label="Fermer">&#10005;</a>
+    <span class="titre">Créditer des jetons</span>
+  </header>
+
+  <main class="page" style="padding-top:13px">
+
+    <div id="msg" class="encart encart-erreur" hidden></div>
+    <div id="chargement" class="chargement">Chargement…</div>
+
+    <div id="contenu" hidden>
+
+      <!-- Choix de l'étudiant -->
+      <div class="champ">
+        <label for="recherche">Étudiant</label>
+
+        <div id="zone-recherche">
+          <input type="search" id="recherche" placeholder="Nom, prénom ou classe…"
+                 autocomplete="off">
+          <div id="resultats" style="margin-top:6px"></div>
+        </div>
+
+        <div id="choisi" hidden class="ligne statique"
+             style="border-color:#C4A8EE;background:#FBF9FE">
+          <span class="avatar avatar-s" id="ini"></span>
+          <span class="contenu">
+            <span class="titre-ligne" id="nom-choisi"></span>
+            <span class="micro" id="detail-choisi"></span>
+          </span>
+          <button type="button" class="bouton-rond" id="changer"
+                  style="width:26px;height:26px;font-size:13px" aria-label="Changer">&#10005;</button>
+        </div>
+      </div>
+
+      <div id="suite" hidden>
+
+        <!-- Motif -->
+        <div class="champ">
+          <label>Motif du crédit</label>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="carte-motif actif" data-motif="depot_vetements"
+                    style="flex:1;border-radius:10px;padding:12px 9px;text-align:center;
+                           cursor:pointer;font-family:var(--police)">
+              <div style="font-size:19px">&#128087;</div>
+              <div style="font-size:12px;font-weight:900;margin-top:3px">Dépôt vêtements</div>
+            </button>
+            <button type="button" class="carte-motif" data-motif="achat_jetons"
+                    style="flex:1;border-radius:10px;padding:12px 9px;text-align:center;
+                           cursor:pointer;font-family:var(--police)">
+              <div style="font-size:19px">&#128234;</div>
+              <div style="font-size:12px;font-weight:900;margin-top:3px">Achat de jetons</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Montant reçu (achat uniquement) -->
+        <div class="champ" id="bloc-euros" hidden>
+          <label for="euros">Montant reçu</label>
+          <div class="choix" style="margin-bottom:9px" id="raccourcis"></div>
+          <div style="display:flex;align-items:center;gap:9px">
+            <input type="number" id="euros" min="0" step="0.50" placeholder="0,00"
+                   inputmode="decimal" style="text-align:center;font-size:17px;font-weight:900;max-width:120px">
+            <span style="font-size:15px;font-weight:700;color:#5A5A7A">€</span>
+            <span class="micro" id="conversion" style="flex:1"></span>
+          </div>
+        </div>
+
+        <!-- Nombre de jetons -->
+        <div class="cartouche cartouche-vert" style="margin-bottom:13px">
+          <div class="rangee">
+            <div>
+              <div class="titre-c">Jetons à créditer</div>
+              <div class="micro" style="color:#4A7010" id="nouveau-solde"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button type="button" class="bouton-rond" id="moins"
+                      style="background:#fff;color:#4A7010;width:28px;height:28px;font-size:18px"
+                      aria-label="Diminuer">&#8722;</button>
+              <input type="number" id="jetons" min="1" max="200" value="1" inputmode="numeric"
+                     style="width:64px;text-align:center;font-size:20px;font-weight:900;
+                            border-color:#B8CC6E;padding:6px">
+              <button type="button" class="bouton-rond" id="plus"
+                      style="background:#fff;color:#4A7010;width:28px;height:28px;font-size:18px"
+                      aria-label="Augmenter">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="champ">
+          <label for="note">Note <span class="micro">(facultatif)</span></label>
+          <input type="text" id="note" placeholder="Ex. 2 pulls, 1 jean, 1 veste">
+        </div>
+
+        <div class="encart encart-info">
+          <span>Ce crédit sera enregistré à ton nom dans l'historique de l'étudiant.</span>
+        </div>
+
+        <button type="button" class="btn" id="valider">Créditer</button>
+        <div style="height:24px"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  let moi = null;
+  let cible = null;           // étudiant sélectionné
+  let soldeCible = 0;
+  let motif = 'depot_vetements';
+
+  const msg = document.getElementById('msg');
+  function erreur(t) { msg.textContent = t; msg.hidden = false; }
+  const nettoyer = () => msg.hidden = true;
+
+  // ── Démarrage ───────────────────────────────────
+
+  (async function demarrer() {
+    moi = await exigerEquipe();
+    if (!moi) return;
+    afficherNavigation('admin');
+
+    const droits = await mesDroits();
+    if (!droits.crediter_jetons) {
+      document.getElementById('chargement').innerHTML =
+        "<p>Tu n'as pas le droit de créditer des jetons.</p>" +
+        '<div style="height:14px"></div>' +
+        '<a href="admin.html" class="btn" style="max-width:220px;margin:0 auto;text-decoration:none">Retour</a>';
+      return;
+    }
+
+    // Pré-sélection depuis la fiche d'un étudiant
+    const id = new URLSearchParams(location.search).get('etudiant');
+    if (id) {
+      const { data } = await db.from('profils')
+        .select('id, prenom, nom, classe, role').eq('id', id).single();
+      if (data) await choisir(data);
+    }
+
+    construireRaccourcis();
+    majJetons();
+    document.getElementById('chargement').hidden = true;
+    document.getElementById('contenu').hidden = false;
+  })();
+
+  // ── Recherche d'un étudiant ─────────────────────
+
+  let minuteur;
+  document.getElementById('recherche').addEventListener('input', (e) => {
+    clearTimeout(minuteur);
+    const t = e.target.value.trim();
+    if (t.length < 2) { document.getElementById('resultats').innerHTML = ''; return; }
+    minuteur = setTimeout(() => chercher(t), 300);
+  });
+
+  async function chercher(texte) {
+    const { data } = await db.from('profils')
+      .select('id, prenom, nom, classe, role')
+      .or(`prenom.ilike.%${texte}%,nom.ilike.%${texte}%,classe.ilike.%${texte}%`)
+      .eq('actif', true)
+      .order('nom').limit(8);
+
+    const liste = data || [];
+    const zone = document.getElementById('resultats');
+
+    if (!liste.length) {
+      zone.innerHTML = '<p class="micro" style="padding:8px 2px">Aucun résultat.</p>';
+      return;
+    }
+
+    zone.innerHTML = '';
+    liste.forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'ligne';
+      const soi = p.id === moi.id;
+      d.innerHTML = `
+        <span class="avatar avatar-s">${initiales(p.prenom, p.nom)}</span>
+        <span class="contenu">
+          <span class="titre-ligne">${echapper(p.prenom)} ${echapper(p.nom)}</span>
+          <span class="micro">${echapper(p.classe || '')}${soi ? ' · toi-même' : ''}</span>
+        </span>
+        ${soi ? '<span class="pill pill-vendu">Interdit</span>' : '<span class="fleche">&#8250;</span>'}`;
+      if (soi) {
+        d.style.opacity = '.55';
+        d.style.cursor = 'not-allowed';
+        d.onclick = () => erreur("Tu ne peux pas créditer ton propre compte. Demande à quelqu'un d'autre.");
+      } else {
+        d.onclick = () => choisir(p);
+      }
+      zone.appendChild(d);
+    });
+  }
+
+  async function choisir(p) {
+    nettoyer();
+    if (p.id === moi.id) {
+      erreur("Tu ne peux pas créditer ton propre compte."); return;
+    }
+    cible = p;
+    soldeCible = await soldeDe(p.id);
+
+    document.getElementById('ini').textContent = initiales(p.prenom, p.nom);
+    document.getElementById('nom-choisi').textContent = `${p.prenom} ${p.nom}`;
+    document.getElementById('detail-choisi').textContent =
+      `${p.classe || ''} · solde actuel : ${soldeCible} ${motJetons(soldeCible)}`;
+
+    document.getElementById('zone-recherche').hidden = true;
+    document.getElementById('choisi').hidden = false;
+    document.getElementById('suite').hidden = false;
+    majJetons();
+  }
+
+  document.getElementById('changer').addEventListener('click', () => {
+    cible = null; soldeCible = 0;
+    document.getElementById('recherche').value = '';
+    document.getElementById('resultats').innerHTML = '';
+    document.getElementById('zone-recherche').hidden = false;
+    document.getElementById('choisi').hidden = true;
+    document.getElementById('suite').hidden = true;
+  });
+
+  // ── Motif ───────────────────────────────────────
+
+  function styleMotif(b, actif) {
+    b.style.background = actif ? '#4A2480' : '#fff';
+    b.style.border = actif ? '1px solid #4A2480' : '1px solid #D4C5EF';
+    b.style.color = actif ? '#fff' : '#5A5A7A';
+  }
+
+  document.querySelectorAll('.carte-motif').forEach(b => {
+    styleMotif(b, b.dataset.motif === motif);
+    b.addEventListener('click', () => {
+      motif = b.dataset.motif;
+      document.querySelectorAll('.carte-motif').forEach(x => styleMotif(x, x === b));
+      document.getElementById('bloc-euros').hidden = motif !== 'achat_jetons';
+      if (motif !== 'achat_jetons') document.getElementById('euros').value = '';
+      majJetons();
+    });
+  });
+
+  // ── Montant en euros ────────────────────────────
+
+  function construireRaccourcis() {
+    const zone = document.getElementById('raccourcis');
+    [1, 2, 5, 10].forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = v + ' €';
+      b.onclick = () => {
+        document.getElementById('euros').value = v.toFixed(2);
+        zone.querySelectorAll('button').forEach(x => x.classList.remove('actif'));
+        b.classList.add('actif');
+        convertir();
+      };
+      zone.appendChild(b);
+    });
+  }
+
+  function convertir() {
+    const e = parseFloat(document.getElementById('euros').value);
+    if (isNaN(e) || e <= 0) {
+      document.getElementById('conversion').textContent = '';
+      return;
+    }
+    const n = Math.round(e / PRIX_JETON);
+    document.getElementById('jetons').value = n;
+    document.getElementById('conversion').textContent =
+      `${e.toFixed(2).replace('.', ',')} € ÷ 0,50 = ${n} ${motJetons(n)}`;
+    majJetons();
+  }
+
+  document.getElementById('euros').addEventListener('input', () => {
+    document.getElementById('raccourcis').querySelectorAll('button')
+      .forEach(x => x.classList.remove('actif'));
+    convertir();
+  });
+
+  // ── Nombre de jetons ────────────────────────────
+
+  const champ = document.getElementById('jetons');
+
+  function majJetons() {
+    let n = parseInt(champ.value, 10);
+    if (isNaN(n) || n < 1) n = 1;
+    if (n > 200) n = 200;
+    champ.value = n;
+    document.getElementById('nouveau-solde').textContent =
+      cible ? `Nouveau solde : ${soldeCible + n} ${motJetons(soldeCible + n)}` : '';
+    document.getElementById('valider').textContent =
+      `Créditer ${n} ${motJetons(n)}`;
+  }
+
+  champ.addEventListener('input', majJetons);
+  document.getElementById('moins').addEventListener('click', () => {
+    champ.value = Math.max(1, (parseInt(champ.value, 10) || 1) - 1); majJetons();
+  });
+  document.getElementById('plus').addEventListener('click', () => {
+    champ.value = Math.min(200, (parseInt(champ.value, 10) || 0) + 1); majJetons();
+  });
+
+  // ── Validation ──────────────────────────────────
+
+  document.getElementById('valider').addEventListener('click', async () => {
+    nettoyer();
+    if (!cible) { erreur('Choisis un étudiant.'); return; }
+
+    const n = parseInt(champ.value, 10);
+    if (!n || n < 1) { erreur('Indique un nombre de jetons valide.'); return; }
+
+    let note = document.getElementById('note').value.trim() || null;
+    if (motif === 'achat_jetons') {
+      const e = parseFloat(document.getElementById('euros').value);
+      if (!isNaN(e) && e > 0) {
+        const s = e.toFixed(2).replace('.', ',') + ' €';
+        note = note ? `${s} · ${note}` : s;
+      }
+    }
+
+    const b = document.getElementById('valider');
+    b.disabled = true; b.textContent = 'Enregistrement…';
+
+    try {
+      const { data, error } = await db.rpc('crediter_jetons', {
+        p_etudiant: cible.id, p_montant: n, p_motif: motif, p_note: note,
+      });
+      if (error) throw error;
+      if (!data.ok) { erreur(data.message); b.disabled = false; majJetons(); return; }
+
+      notifier(`${n} ${motJetons(n)} crédités à ${cible.prenom}`, 'ok');
+      setTimeout(() => location.href = 'admin.html', 900);
+    } catch (err) {
+      erreur(messageErreur(err));
+      b.disabled = false; majJetons();
+    }
+  });
+})();
+</script>
+</body>
+</html>
