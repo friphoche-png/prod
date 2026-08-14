@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Mes jetons</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:520px;margin:0 auto">
+
+  <header class="barre-haut">
+    <span class="titre">Mes jetons</span>
+    <button type="button" class="bouton-rond" id="aide"
+            style="background:#4A2480;color:#fff" aria-label="Comment obtenir des jetons">+</button>
+  </header>
+
+  <main class="page" style="padding-top:13px">
+
+    <!-- Solde -->
+    <div class="cartouches">
+      <div class="cartouche cartouche-vert">
+        <div class="titre-c">&#129689; Mon solde</div>
+        <div class="nombre" id="solde">–</div>
+      </div>
+      <div class="cartouche cartouche-violet">
+        <div class="titre-c">&#8987; Réservations</div>
+        <div class="nombre" id="nb-resa">–</div>
+      </div>
+    </div>
+
+    <div id="chargement" class="chargement">Chargement…</div>
+
+    <div id="contenu" hidden>
+
+      <!-- Réservations en cours -->
+      <section id="bloc-resa" hidden style="margin-bottom:18px">
+        <div class="encart encart-info">
+          <span>Passe au local pendant les horaires d'ouverture pour récupérer
+          tes articles. Les jetons sont débités au retrait.</span>
+        </div>
+
+        <div class="titre-section">&#8987; En attente de retrait</div>
+        <div id="liste-resa"></div>
+
+        <div class="encart encart-alerte">
+          <span>Une réservation non récupérée sous 7 jours est automatiquement
+          annulée et l'article remis en rayon.</span>
+        </div>
+
+        <div class="ligne statique" style="background:#F5F2FA">
+          <div class="contenu">
+            <div class="micro">Total à régler au retrait</div>
+            <div class="micro" id="rappel-solde"></div>
+          </div>
+          <div>
+            <span style="font-size:20px;font-weight:900;color:#2E5A08" id="total">–</span>
+            <span style="font-size:12px;font-weight:700;color:#4A7010" id="total-unite">jetons</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Historique -->
+      <div class="titre-section">&#128337; Historique</div>
+      <div id="historique"></div>
+
+      <div id="vide" class="vide" hidden>
+        <div class="grand">&#129689;</div>
+        <div class="titre-vide">Pas encore de jetons</div>
+        <p>Dépose des vêtements au local pour obtenir tes premiers jetons.</p>
+      </div>
+
+      <div style="height:20px"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Comment obtenir des jetons -->
+<div class="voile" id="voile-aide" hidden>
+  <div class="fenetre">
+    <div class="fenetre-entete" style="background:#DDF0C0">
+      <div>
+        <h2 style="font-size:16px;color:#2E5A08">Obtenir des jetons</h2>
+        <div class="micro" style="color:#4A7010">Deux façons de recharger ton solde</div>
+      </div>
+      <button type="button" class="bouton-rond" id="fermer-aide"
+              style="background:#4A7010;color:#fff;width:26px;height:26px;font-size:14px"
+              aria-label="Fermer">&#10005;</button>
+    </div>
+    <div class="fenetre-corps">
+
+      <div class="ligne statique" style="align-items:flex-start">
+        <span style="width:34px;height:34px;border-radius:9px;background:#EAF5D8;
+                     display:flex;align-items:center;justify-content:center;
+                     font-size:17px;flex-shrink:0">&#128087;</span>
+        <div class="contenu">
+          <div class="titre-ligne">Déposer des vêtements</div>
+          <div class="micro" style="line-height:1.5">Apporte tes vêtements propres et
+          en bon état au local. Un bénévole les examine et crédite ton compte.</div>
+        </div>
+      </div>
+
+      <div class="ligne statique" style="align-items:flex-start">
+        <span style="width:34px;height:34px;border-radius:9px;background:#EAF5D8;
+                     display:flex;align-items:center;justify-content:center;
+                     font-size:17px;flex-shrink:0">&#128234;</span>
+        <div class="contenu">
+          <div class="titre-ligne">Acheter des jetons</div>
+          <div class="micro" style="line-height:1.5">Glisse ton argent dans la boîte
+          aux lettres de la Frip' avec ton nom et ta classe. Les jetons sont
+          crédités sous 72 h.</div>
+        </div>
+      </div>
+
+      <div style="background:#4A2480;border-radius:12px;padding:14px 16px;
+                  display:flex;align-items:center;justify-content:space-between;
+                  margin:12px 0 10px">
+        <span style="font-size:11px;font-weight:700;color:#C4A8EE;
+                     letter-spacing:.06em;text-transform:uppercase">Prix d'un jeton</span>
+        <span><span style="font-size:24px;font-weight:900;color:#fff">0,50</span>
+              <span style="font-size:13px;font-weight:700;color:#C4A8EE"> €</span></span>
+      </div>
+
+      <div class="encart encart-alerte">
+        <span><strong>Jetons non remboursables.</strong> Une fois crédités, ils ne
+        peuvent pas être échangés contre de l'argent.</span>
+      </div>
+
+      <div class="encart encart-info">
+        <span>Les jetons n'expirent pas et restent sur ton compte d'une année
+        sur l'autre.</span>
+      </div>
+
+      <button type="button" class="btn" id="ok-aide">Compris</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  let profil = null;
+
+  (async function demarrer() {
+    profil = await exigerConnexion();
+    if (!profil) return;
+    afficherNavigation('reservations');
+    await libererReservationsExpirees();
+
+    const [solde, resa, mvts] = await Promise.all([
+      monSolde(),
+      db.from('reservations')
+        .select('id, reserve_le, expire_le, articles(id, numero, nom, cout_jetons, photos, taille, pointure, marques(nom))')
+        .eq('etudiant_id', profil.id)
+        .is('annulee_le', null).is('vendue_le', null)
+        .order('reserve_le', { ascending: false }),
+      db.from('mouvements_jetons')
+        .select('id, montant, motif, note, cree_le, articles(numero, nom)')
+        .eq('etudiant_id', profil.id)
+        .order('cree_le', { ascending: false }).limit(40),
+    ]);
+
+    document.getElementById('solde').textContent = solde;
+
+    const reservations = resa.data || [];
+    document.getElementById('nb-resa').textContent = reservations.length;
+
+    if (reservations.length) {
+      afficherReservations(reservations, solde);
+    }
+
+    afficherHistorique(mvts.data || []);
+
+    document.getElementById('chargement').hidden = true;
+    document.getElementById('contenu').hidden = false;
+  })();
+
+  function afficherReservations(liste, solde) {
+    document.getElementById('liste-resa').innerHTML = liste.map(r => {
+      const a = r.articles;
+      if (!a) return '';
+      const jours = joursRestants(r.expire_le);
+      const urgent = jours <= 2;
+      const photo = (a.photos && a.photos[0])
+        ? `background:center/cover url('${a.photos[0]}')` : 'background:#E8E0F5';
+      const icone = (a.photos && a.photos[0]) ? '' : '&#128087;';
+      const marque = a.marques ? a.marques.nom : '';
+      return `
+        <a class="ligne" href="article.html?id=${a.id}"
+           style="text-decoration:none;align-items:flex-start;padding:10px">
+          <span style="width:56px;height:56px;border-radius:9px;flex-shrink:0;
+                       display:flex;align-items:center;justify-content:center;
+                       font-size:24px;color:#9B72CF;${photo}">${icone}</span>
+          <span class="contenu">
+            <span class="micro" style="color:#9B72CF;font-weight:700;
+                  text-transform:uppercase;letter-spacing:.05em">${echapper(marque)} · ${tailleAffichee(a)} · #${String(a.numero).padStart(3,'0')}</span>
+            <span class="titre-ligne" style="display:block;margin:2px 0 4px">${echapper(a.nom)}</span>
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+              <span class="pill pill-dispo">${a.cout_jetons} ${motJetons(a.cout_jetons)}</span>
+              <span class="micro" style="${urgent ? 'color:#8A6000;font-weight:700' : ''}">
+                ${jours === 0 ? "Expire aujourd'hui" : `Expire dans ${jours} j`}
+              </span>
+            </span>
+          </span>
+        </a>`;
+    }).join('');
+
+    const total = liste.reduce((s, r) => s + (r.articles ? r.articles.cout_jetons : 0), 0);
+    document.getElementById('total').textContent = total;
+    document.getElementById('total-unite').textContent = motJetons(total);
+    document.getElementById('rappel-solde').textContent =
+      solde >= total ? `Ton solde : ${solde} ${motJetons(solde)}`
+                     : `Attention : il te manque ${total - solde} ${motJetons(total - solde)}`;
+    document.getElementById('bloc-resa').hidden = false;
+  }
+
+  function afficherHistorique(mvts) {
+    if (!mvts.length) {
+      document.getElementById('vide').hidden = false;
+      return;
+    }
+    const libelles = {
+      depot_vetements: 'Dépôt de vêtements',
+      achat_jetons:    'Achat de jetons',
+      achat_article:   'Retrait d\'article',
+      ajustement:      'Ajustement',
+    };
+    document.getElementById('historique').innerHTML = mvts.map(m => {
+      const credit = m.montant > 0;
+      const titre = m.articles
+        ? `#${String(m.articles.numero).padStart(3,'0')} · ${m.articles.nom}`
+        : (libelles[m.motif] || 'Mouvement');
+      return `
+        <div class="ligne statique">
+          <span style="font-size:16px;color:${credit ? '#4A7010' : '#C23B3B'}">
+            ${credit ? '&#8599;' : '&#8600;'}</span>
+          <span class="contenu">
+            <span class="titre-ligne" style="font-size:13px">${echapper(titre)}</span>
+            <span class="micro" style="display:block">
+              ${dateCourte(m.cree_le)}${m.note ? ' · ' + echapper(m.note) : ''}
+            </span>
+          </span>
+          <span style="font-size:14px;font-weight:900;color:${credit ? '#4A7010' : '#C23B3B'}">
+            ${credit ? '+' : ''}${m.montant}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Fenêtre d'aide ──────────────────────────────
+
+  const voile = document.getElementById('voile-aide');
+  const ouvrir = () => { voile.hidden = false; document.body.style.overflow = 'hidden'; };
+  const fermer = () => { voile.hidden = true; document.body.style.overflow = ''; };
+
+  document.getElementById('aide').addEventListener('click', ouvrir);
+  document.getElementById('fermer-aide').addEventListener('click', fermer);
+  document.getElementById('ok-aide').addEventListener('click', fermer);
+  voile.addEventListener('click', (e) => { if (e.target === voile) fermer(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !voile.hidden) fermer();
+  });
+})();
+</script>
+</body>
+</html>
