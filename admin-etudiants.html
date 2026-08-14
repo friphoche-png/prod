@@ -131,12 +131,12 @@
           </select>
         </div>
 
-        <div class="champ">
-          <label for="f-classe-select">Classe</label>
-          <select id="f-classe-select"></select>
-        </div>
+        <p class="micro" style="margin:-6px 0 14px">
+          Les informations personnelles (classe, tailles, contact) ne sont
+          modifiables que par la personne elle-même, depuis son profil.
+        </p>
 
-        <button type="button" class="btn" id="f-enregistrer">Enregistrer</button>
+        <button type="button" class="btn" id="f-enregistrer">Enregistrer le rôle</button>
         <div style="height:8px"></div>
         <button type="button" class="btn btn-secondaire" id="f-desactiver"
                 style="border-color:#E8C547;color:#8A6000"></button>
@@ -413,11 +413,6 @@
 
     document.getElementById('f-role-select').value = p.role;
 
-    const sel = document.getElementById('f-classe-select');
-    sel.innerHTML = '<option value="">—</option>';
-    await remplirClasses(sel);
-    sel.value = p.classe || '';
-
     const b = document.getElementById('f-desactiver');
     const soi = p.id === moi.id;
     b.textContent = p.actif ? 'Désactiver ce compte' : 'Réactiver ce compte';
@@ -427,7 +422,6 @@
 
   document.getElementById('f-enregistrer').addEventListener('click', async () => {
     const role = document.getElementById('f-role-select').value;
-    const classe = document.getElementById('f-classe-select').value || null;
 
     if (fiche.id === moi.id && role !== 'admin') {
       notifier('Tu ne peux pas retirer ton propre rôle d\'administratrice.', 'erreur');
@@ -440,7 +434,7 @@
 
     try {
       const { error } = await db.from('profils')
-        .update({ role, classe }).eq('id', fiche.id);
+        .update({ role }).eq('id', fiche.id);
       if (error) throw error;
 
       // Un nouveau bénévole reçoit des droits par défaut
@@ -453,13 +447,13 @@
         }, { onConflict: 'profil_id', ignoreDuplicates: true });
       }
 
-      fiche.role = role; fiche.classe = classe;
-      notifier('Compte mis à jour', 'ok');
+      fiche.role = role;
+      notifier('Rôle mis à jour', 'ok');
       ouvrirFiche(fiche.id);
     } catch (err) {
       notifier(messageErreur(err), 'erreur');
     }
-    b.disabled = false; b.textContent = 'Enregistrer';
+    b.disabled = false; b.textContent = 'Enregistrer le rôle';
   });
 
   document.getElementById('f-desactiver').addEventListener('click', async () => {
