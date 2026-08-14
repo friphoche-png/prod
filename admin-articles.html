@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Tous les articles</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:560px;margin:0 auto">
+
+  <header class="barre-haut">
+    <a href="admin.html" class="bouton-rond" aria-label="Retour">&#8592;</a>
+    <span class="titre">Tous les articles</span>
+    <a href="admin-article.html" class="bouton-rond"
+       style="background:#4A2480;color:#fff;text-decoration:none"
+       id="bouton-ajout" aria-label="Ajouter">+</a>
+  </header>
+
+  <div style="background:#F5F2FA;padding:11px 14px 9px;border-bottom:1px solid #D4C5EF">
+    <div style="position:relative;margin-bottom:9px">
+      <span style="position:absolute;left:11px;top:10px;font-size:14px;color:#9B72CF">&#128269;</span>
+      <input type="search" id="recherche" placeholder="Nom, numéro ou marque…"
+             style="padding-left:34px">
+    </div>
+    <div style="display:flex;gap:6px;overflow-x:auto" id="onglets"></div>
+  </div>
+
+  <main class="page" style="padding-top:10px">
+
+    <div class="rangee" style="margin-bottom:9px">
+      <span class="micro" id="compteur"></span>
+      <span class="micro" style="color:#9B72CF;font-weight:700" id="attente" hidden></span>
+    </div>
+
+    <div id="liste"></div>
+    <div id="chargement" class="chargement">Chargement…</div>
+
+    <div id="vide" class="vide" hidden>
+      <div class="grand">&#128087;</div>
+      <div class="titre-vide">Aucun article</div>
+      <p id="texte-vide">Ajoute ton premier article avec le bouton +.</p>
+    </div>
+
+    <div style="height:20px"></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  let moi = null, droits = {};
+  let onglet = 'reserve';        // on ouvre sur les réservations à traiter
+  let texte = '';
+
+  const ONGLETS = [
+    { code:'reserve',    nom:'À traiter' },
+    { code:'disponible', nom:'En stock' },
+    { code:'brouillon',  nom:'Brouillons' },
+    { code:'vendu',      nom:'Vendus' },
+    { code:'tous',       nom:'Tous' },
+  ];
+
+  (async function demarrer() {
+    moi = await exigerEquipe();
+    if (!moi) return;
+    afficherNavigation('admin');
+    await libererReservationsExpirees();
+
+    droits = await mesDroits();
+    if (!droits.ajouter_article) document.getElementById('bouton-ajout').hidden = true;
+
+    construireOnglets();
+    charger();
+  })();
+
+  function construireOnglets() {
+    const zone = document.getElementById('onglets');
+    zone.innerHTML = '';
+    ONGLETS.forEach(o => {
+      const b = document.createElement('button');
+      const actif = onglet === o.code;
+      b.textContent = o.nom;
+      b.style.cssText = `padding:6px 13px;border-radius:20px;font-family:var(--police);
+        font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;flex-shrink:0;
+        border:1px solid ${actif ? '#4A2480' : '#D4C5EF'};
+        background:${actif ? '#4A2480' : '#fff'};
+        color:${actif ? '#fff' : '#5A5A7A'}`;
+      b.onclick = () => { onglet = o.code; construireOnglets(); charger(); };
+      zone.appendChild(b);
+    });
+  }
+
+  async function charger() {
+    document.getElementById('chargement').hidden = false;
+    document.getElementById('vide').hidden = true;
+    document.getElementById('liste').innerHTML = '';
+
+    let q = db.from('articles')
+      .select('id, numero, nom, statut, cout_jetons, taille, pointure, photos, cree_le, marques(nom)')
+      .order('cree_le', { ascending: false }).limit(150);
+
+    if (onglet !== 'tous') q = q.eq('statut', onglet);
+    if (texte) {
+      const n = parseInt(texte.replace('#',''), 10);
+      q = isNaN(n) ? q.ilike('nom', `%${texte}%`) : q.eq('numero', n);
+    }
+
+    const { data, error } = await q;
+    document.getElementById('chargement').hidden = true;
+
+    if (error) {
+      document.getElementById('texte-vide').textContent = messageErreur(error);
+      document.getElementById('vide').hidden = false;
+      return;
+    }
+
+    const articles = data || [];
+    document.getElementById('compteur').textContent =
+      `${articles.length} article${articles.length > 1 ? 's' : ''}`;
+
+    if (!articles.length) {
+      document.getElementById('texte-vide').textContent = texte
+        ? 'Aucun article ne correspond à cette recherche.'
+        : (onglet === 'reserve' ? 'Aucune réservation à traiter.' : 'Aucun article dans cette catégorie.');
+      document.getElementById('vide').hidden = false;
+      return;
+    }
+
+    // Pour les réservés, on récupère qui a réservé
+    let resa = {};
+    if (onglet === 'reserve' || onglet === 'tous') {
+      const ids = articles.filter(a => a.statut === 'reserve').map(a => a.id);
+      if (ids.length) {
+        const { data: rs } = await db.from('reservations')
+          .select('id, article_id, reserve_le, expire_le, profils:etudiant_id(id, prenom, nom, classe)')
+          .in('article_id', ids).is('annulee_le', null).is('vendue_le', null);
+        (rs || []).forEach(r => resa[r.article_id] = r);
+      }
+    }
+
+    document.getElementById('liste').innerHTML = articles.map(a => ligne(a, resa[a.id])).join('');
+    brancherBoutons();
+  }
+
+  function ligne(a, r) {
+    const st = STATUTS[a.statut] || STATUTS.disponible;
+    const photo = (a.photos && a.photos[0])
+      ? `background:center/cover url('${a.photos[0]}')` : 'background:#E8E0F5';
+    const icone = (a.photos && a.photos[0]) ? '' : '&#128087;';
+    const marque = a.marques ? a.marques.nom : '';
+
+    let bas = `<span class="micro">${echapper(marque)} · ${tailleAffichee(a)} · ${a.cout_jetons} ${motJetons(a.cout_jetons)}</span>`;
+    let action = '<span class="fleche">&#8250;</span>';
+
+    if (r && r.profils) {
+      const jours = joursRestants(r.expire_le);
+      bas = `<span class="micro">Réservé par ${echapper(r.profils.prenom)} ${echapper(r.profils.nom)}
+             ${r.profils.classe ? '· ' + echapper(r.profils.classe) : ''}</span>
+             <span class="micro" style="display:block;${jours <= 2 ? 'color:#8A6000;font-weight:700' : ''}">
+               ${a.cout_jetons} ${motJetons(a.cout_jetons)} · expire dans ${jours} j</span>`;
+      if (droits.valider_vente) {
+        action = `<button type="button" class="btn btn-petit vendre"
+                    data-resa="${r.id}" data-nom="${echapper(a.nom)}">Vendu</button>`;
+      }
+    }
+
+    return `
+      <div class="ligne" style="align-items:flex-start;padding:10px">
+        <a href="article.html?id=${a.id}" style="display:flex;gap:10px;flex:1;
+           text-decoration:none;color:inherit;min-width:0">
+          <span style="width:50px;height:50px;border-radius:9px;flex-shrink:0;
+                       display:flex;align-items:center;justify-content:center;
+                       font-size:21px;color:#9B72CF;${photo}">${icone}</span>
+          <span style="flex:1;min-width:0">
+            <span class="micro" style="color:#9B72CF;font-weight:700">#${String(a.numero).padStart(3,'0')}</span>
+            <span class="titre-ligne" style="display:block;margin:1px 0 3px">${echapper(a.nom)}</span>
+            ${bas}
+          </span>
+        </a>
+        <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+          <span class="pill ${st.classe}">${st.nom}</span>
+          ${action}
+        </span>
+      </div>`;
+  }
+
+  function brancherBoutons() {
+    document.querySelectorAll('.vendre').forEach(b => {
+      b.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const nom = b.dataset.nom;
+        if (!confirm(`Confirmer la vente de « ${nom} » ?\n\nLes jetons seront débités du compte de l'étudiant.`)) return;
+
+        b.disabled = true; b.textContent = '…';
+        try {
+          const { data, error } = await db.rpc('valider_vente', {
+            p_reservation: Number(b.dataset.resa),
+          });
+          if (error) throw error;
+          if (!data.ok) { notifier(data.message, 'erreur'); b.disabled = false; b.textContent = 'Vendu'; return; }
+          notifier('Vente enregistrée, jetons débités', 'ok');
+          charger();
+        } catch (err) {
+          notifier(messageErreur(err), 'erreur');
+          b.disabled = false; b.textContent = 'Vendu';
+        }
+      });
+    });
+  }
+
+  let minuteur;
+  document.getElementById('recherche').addEventListener('input', (e) => {
+    clearTimeout(minuteur);
+    minuteur = setTimeout(() => { texte = e.target.value.trim(); charger(); }, 350);
+  });
+})();
+</script>
+</body>
+</html>
