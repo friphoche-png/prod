@@ -99,7 +99,7 @@
           </div>
         </div>
 
-        <div class="champ">
+        <div class="champ" id="bloc-note">
           <label for="note">Note <span class="micro">(facultatif)</span></label>
           <input type="text" id="note" placeholder="Ex. 2 pulls, 1 jean, 1 veste">
         </div>
@@ -247,8 +247,17 @@
     b.addEventListener('click', () => {
       motif = b.dataset.motif;
       document.querySelectorAll('.carte-motif').forEach(x => styleMotif(x, x === b));
-      document.getElementById('bloc-euros').hidden = motif !== 'achat_jetons';
-      if (motif !== 'achat_jetons') document.getElementById('euros').value = '';
+      const achat = motif === 'achat_jetons';
+      document.getElementById('bloc-euros').hidden = !achat;
+      document.getElementById('bloc-note').hidden = achat;
+      if (!achat) {
+        document.getElementById('euros').value = '';
+        document.getElementById('conversion').textContent = '';
+        document.getElementById('raccourcis').querySelectorAll('button')
+          .forEach(x => x.classList.remove('actif'));
+      } else {
+        document.getElementById('note').value = '';
+      }
       majJetons();
     });
   });
@@ -322,13 +331,12 @@
     const n = parseInt(champ.value, 10);
     if (!n || n < 1) { erreur('Indique un nombre de jetons valide.'); return; }
 
-    let note = document.getElementById('note').value.trim() || null;
+    let note = null;
     if (motif === 'achat_jetons') {
       const e = parseFloat(document.getElementById('euros').value);
-      if (!isNaN(e) && e > 0) {
-        const s = e.toFixed(2).replace('.', ',') + ' €';
-        note = note ? `${s} · ${note}` : s;
-      }
+      if (!isNaN(e) && e > 0) note = e.toFixed(2).replace('.', ',') + ' €';
+    } else {
+      note = document.getElementById('note').value.trim() || null;
     }
 
     const b = document.getElementById('valider');
