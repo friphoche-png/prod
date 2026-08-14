@@ -68,6 +68,36 @@
       <div id="banniere" class="encart" hidden></div>
 
       <button type="button" class="btn" id="reserver">Réserver cet article</button>
+
+      <!-- Annulation par l'étudiant qui a réservé -->
+      <div id="bloc-annuler" hidden>
+        <div style="height:8px"></div>
+        <button type="button" class="btn btn-secondaire" id="annuler"
+                style="border-color:#E8C547;color:#8A6000">Annuler ma réservation</button>
+      </div>
+
+      <!-- Validation par l'équipe -->
+      <div id="bloc-equipe" hidden style="margin-top:14px">
+        <hr class="trait">
+        <div class="titre-section">&#9989; Retrait de l'article</div>
+        <div class="ligne statique" style="border-color:#C4A8EE;background:#FBF9FE">
+          <span class="avatar avatar-s" id="eq-ini"></span>
+          <span class="contenu">
+            <span class="titre-ligne" id="eq-nom"></span>
+            <span class="micro" id="eq-detail"></span>
+          </span>
+          <a class="btn-lien" id="eq-tel" href="#" hidden>Appeler</a>
+        </div>
+        <div id="eq-message" class="encart encart-ok">
+          <span>Les jetons ont été prélevés à la réservation. Valider le retrait
+          confirme simplement que l'article a été remis.</span>
+        </div>
+        <button type="button" class="btn" id="valider-vente">Valider le retrait</button>
+        <div style="height:8px"></div>
+        <button type="button" class="btn btn-secondaire" id="annuler-equipe"
+                style="border-color:#E8C547;color:#8A6000">Annuler la réservation</button>
+      </div>
+
       <div style="height:8px"></div>
       <a href="infos.html" class="btn btn-secondaire"
          style="text-decoration:none;display:block">&#128172; Contacter la Frip'</a>
@@ -82,7 +112,7 @@
 <script>
 (function () {
   const id = new URLSearchParams(location.search).get('id');
-  let profil = null, article = null, solde = 0;
+  let profil = null, article = null, solde = 0, resa = null, droitsMoi = {};
 
   document.getElementById('retour').addEventListener('click', () => {
     if (history.length > 1) history.back(); else location.href = 'catalogue.html';
@@ -102,6 +132,7 @@
       monSolde(),
       mesDroits(),
     ]);
+    droitsMoi = droits;
 
     if (res.error || !res.data) { erreurPage("Cet article n'existe pas ou n'est plus visible."); return; }
 
@@ -114,10 +145,29 @@
       b.onclick = () => location.href = 'admin-article.html?id=' + article.id;
     }
 
+    if (article.statut === 'reserve') await chargerReservation(droits);
+
     afficher();
     document.getElementById('chargement').hidden = true;
     document.getElementById('contenu').hidden = false;
   })();
+
+  async function chargerReservation(droits) {
+    // Côté équipe : on récupère qui a réservé
+    if (droits.valider_vente || droits.modifier_article) {
+      const { data } = await db.rpc('reservation_active', { p_article: Number(article.id) });
+      if (data) resa = data;
+    }
+    // Côté étudiant : est-ce ma réservation ?
+    if (!resa) {
+      const { data } = await db.from('reservations')
+        .select('id, expire_le').eq('article_id', article.id)
+        .eq('etudiant_id', profil.id)
+        .is('annulee_le', null).is('vendue_le', null).limit(1);
+      if (data && data.length) resa = { id: data[0].id, etudiant_id: profil.id,
+                                        expire_le: data[0].expire_le };
+    }
+  }
 
   function erreurPage(t) {
     document.getElementById('chargement').innerHTML =
@@ -216,10 +266,51 @@
       return;
     }
     if (article.statut === 'reserve') {
-      b.textContent = 'Article réservé'; b.disabled = true;
-      b.style.background = '#9B72CF';
-      ban.className = 'encart encart-info';
-      ban.textContent = 'Cet article est réservé par quelqu\'un d\'autre.'; ban.hidden = false;
+      const mienne = resa && resa.etudiant_id === profil.id;
+
+      if (mienne) {
+        b.textContent = 'Tu as réservé cet article'; b.disabled = true;
+        b.style.background = '#9B72CF';
+        const j = resa.expire_le ? joursRestants(resa.expire_le) : null;
+        ban.className = 'encart encart-info';
+        ban.innerHTML = `<span>Passe le récupérer au local${j !== null
+          ? ` — il t'est réservé encore ${j} jour${j > 1 ? 's' : ''}` : ''}.
+          Tes jetons ont déjà été prélevés et te seront rendus si tu annules.</span>`;
+        ban.hidden = false;
+        document.getElementById('bloc-annuler').hidden = false;
+      } else {
+        b.textContent = 'Article réservé'; b.disabled = true;
+        b.style.background = '#9B72CF';
+        ban.className = 'encart encart-info';
+        ban.textContent = "Cet article est réservé par quelqu'un d'autre.";
+        ban.hidden = false;
+      }
+
+      // Bloc équipe
+      if (resa && resa.prenom && droitsMoi.valider_vente) {
+        const propre = resa.etudiant_id === profil.id;
+        document.getElementById('eq-ini').textContent = initiales(resa.prenom, resa.nom);
+        document.getElementById('eq-nom').textContent = `${resa.prenom} ${resa.nom}`;
+        const j = joursRestants(resa.expire_le);
+        document.getElementById('eq-detail').textContent =
+          `${resa.classe || ''} · réservé ${depuis(resa.reserve_le)} · expire dans ${j} j`;
+
+        if (resa.whatsapp) {
+          const t = document.getElementById('eq-tel');
+          t.href = 'tel:' + normaliserTel(resa.whatsapp);
+          t.hidden = false;
+        }
+
+        const bv = document.getElementById('valider-vente');
+        if (propre) {
+          bv.disabled = true;
+          bv.textContent = 'Impossible sur ta propre réservation';
+          document.getElementById('eq-message').className = 'encart encart-alerte';
+          document.getElementById('eq-message').innerHTML =
+            '<span>Tu ne peux pas valider ta propre réservation. Demande à un autre bénévole.</span>';
+        }
+        document.getElementById('bloc-equipe').hidden = false;
+      }
       return;
     }
     if (article.statut === 'brouillon') {
@@ -246,12 +337,60 @@
     try {
       const { data, error } = await db.rpc('reserver_article', { p_article: Number(article.id) });
       if (error) throw error;
-      if (!data.ok) { notifier(data.message, 'erreur'); article.statut = 'reserve'; majBouton(); return; }
-      notifier('Article réservé — passe le récupérer au local', 'ok');
-      setTimeout(() => location.href = 'reservations.html', 900);
+      if (!data.ok) { notifier(data.message, 'erreur'); b.disabled = false;
+                      b.textContent = 'Réserver cet article'; return; }
+      notifier(`Article réservé · ${data.debite} ${motJetons(data.debite)} prélevés`, 'ok');
+      setTimeout(() => location.href = 'reservations.html', 1100);
     } catch (err) {
       notifier(messageErreur(err), 'erreur');
       b.disabled = false; b.textContent = 'Réserver cet article';
+    }
+  });
+  // ── Annuler une réservation ─────────────────────
+
+  async function annulerResa(bouton, texteOrigine) {
+    if (!resa) return;
+    if (!confirm('Annuler cette réservation ?\n\nLes jetons seront rendus et '
+               + "l'article remis en rayon.")) return;
+
+    bouton.disabled = true; bouton.textContent = 'Annulation…';
+    try {
+      const { data, error } = await db.rpc('annuler_reservation',
+        { p_reservation: Number(resa.id) });
+      if (error) throw error;
+      if (!data.ok) { notifier(data.message, 'erreur');
+                      bouton.disabled = false; bouton.textContent = texteOrigine; return; }
+      notifier(`Réservation annulée · ${data.rendu} ${motJetons(data.rendu)} rendus`, 'ok');
+      setTimeout(() => location.reload(), 1100);
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+      bouton.disabled = false; bouton.textContent = texteOrigine;
+    }
+  }
+
+  document.getElementById('annuler').addEventListener('click', (e) =>
+    annulerResa(e.currentTarget, 'Annuler ma réservation'));
+  document.getElementById('annuler-equipe').addEventListener('click', (e) =>
+    annulerResa(e.currentTarget, 'Annuler la réservation'));
+
+  // ── Valider le retrait ──────────────────────────
+
+  document.getElementById('valider-vente').addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    if (!confirm(`Confirmer le retrait de « ${article.nom} » par ${resa.prenom} ?`)) return;
+
+    b.disabled = true; b.textContent = 'Validation…';
+    try {
+      const { data, error } = await db.rpc('valider_vente',
+        { p_reservation: Number(resa.id) });
+      if (error) throw error;
+      if (!data.ok) { notifier(data.message, 'erreur');
+                      b.disabled = false; b.textContent = 'Valider le retrait'; return; }
+      notifier(`Retrait validé pour ${data.prenom}`, 'ok');
+      setTimeout(() => location.reload(), 1100);
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+      b.disabled = false; b.textContent = 'Valider le retrait';
     }
   });
 })();
