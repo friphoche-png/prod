@@ -91,6 +91,11 @@
       <span class="valeur" id="v-email" style="font-size:12px">–</span>
     </div>
 
+    <div class="ligne" id="lien-mdp">
+      <span class="contenu"><span class="micro">Mot de passe</span></span>
+      <span class="valeur" style="color:#9B72CF">Modifier</span>
+    </div>
+
     <div style="height:16px"></div>
 
     <!-- Activité -->
@@ -195,6 +200,46 @@
         <input type="tel" id="e-tel" autocomplete="tel" placeholder="06 12 34 56 78">
       </div>
       <button type="button" class="btn" id="enregistrer-infos">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Mot de passe ══ -->
+<div class="voile" id="voile-mdp" hidden>
+  <div class="fenetre">
+    <div class="fenetre-entete" style="background:#E8E0F5">
+      <h2 style="font-size:16px;color:#4A2480">Changer mon mot de passe</h2>
+      <button type="button" class="bouton-rond" data-fermer="voile-mdp"
+              style="background:#4A2480;color:#fff;width:26px;height:26px;font-size:14px"
+              aria-label="Fermer">&#10005;</button>
+    </div>
+    <div class="fenetre-corps">
+      <div id="msg-mdp" class="encart encart-erreur" hidden></div>
+
+      <div class="champ">
+        <label for="mdp1">Nouveau mot de passe</label>
+        <div style="position:relative">
+          <input type="password" id="mdp1" autocomplete="new-password"
+                 placeholder="Au moins 6 caractères" style="padding-right:44px">
+          <button type="button" id="voir-mdp" aria-label="Afficher"
+                  style="position:absolute;right:6px;top:50%;transform:translateY(-50%);
+                         background:none;border:none;cursor:pointer;font-size:17px;
+                         padding:6px;color:#9B72CF;width:auto">&#128065;</button>
+        </div>
+      </div>
+
+      <div class="champ">
+        <label for="mdp2">Confirmer le mot de passe</label>
+        <input type="password" id="mdp2" autocomplete="new-password"
+               placeholder="Saisis-le une seconde fois">
+      </div>
+
+      <div class="encart encart-info">
+        <span>Tu resteras connectée après le changement. Le nouveau mot de passe
+        sera demandé à ta prochaine connexion.</span>
+      </div>
+
+      <button type="button" class="btn" id="enregistrer-mdp">Changer le mot de passe</button>
     </div>
   </div>
 </div>
@@ -464,6 +509,47 @@
     } catch (err) {
       notifier("Envoi impossible : " + messageErreur(err), 'erreur');
     }
+  });
+
+  // ── Mot de passe ────────────────────────────────
+
+  document.getElementById('lien-mdp').addEventListener('click', () => {
+    document.getElementById('msg-mdp').hidden = true;
+    document.getElementById('mdp1').value = '';
+    document.getElementById('mdp2').value = '';
+    ouvrir('voile-mdp');
+  });
+
+  document.getElementById('voir-mdp').addEventListener('click', (e) => {
+    const c = document.getElementById('mdp1');
+    const cache = c.type === 'password';
+    c.type = cache ? 'text' : 'password';
+    e.currentTarget.innerHTML = cache ? '&#128584;' : '&#128065;';
+  });
+
+  document.getElementById('enregistrer-mdp').addEventListener('click', async () => {
+    const msg = document.getElementById('msg-mdp');
+    const erreur = (t) => { msg.textContent = t; msg.hidden = false; };
+    msg.hidden = true;
+
+    const m1 = document.getElementById('mdp1').value;
+    const m2 = document.getElementById('mdp2').value;
+
+    if (m1.length < 6)  { erreur('Le mot de passe doit faire au moins 6 caractères.'); return; }
+    if (m1 !== m2)      { erreur('Les deux mots de passe ne sont pas identiques.'); return; }
+
+    const b = document.getElementById('enregistrer-mdp');
+    b.disabled = true; b.textContent = 'Enregistrement…';
+
+    try {
+      const { error } = await db.auth.updateUser({ password: m1 });
+      if (error) throw error;
+      fermer('voile-mdp');
+      notifier('Mot de passe changé', 'ok');
+    } catch (err) {
+      erreur(messageErreur(err));
+    }
+    b.disabled = false; b.textContent = 'Changer le mot de passe';
   });
 
   // ── Règlement ───────────────────────────────────
