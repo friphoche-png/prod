@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Recherche</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:720px;margin:0 auto">
+
+  <div style="background:#F5F2FA;padding:13px 14px 11px;border-bottom:1px solid #D4C5EF;
+              position:sticky;top:0;z-index:20">
+    <div style="position:relative">
+      <span style="position:absolute;left:11px;top:11px;font-size:15px;color:#9B72CF">&#128269;</span>
+      <input type="search" id="recherche" placeholder="Numéro, nom ou marque…"
+             autocomplete="off" style="padding-left:34px;padding-right:38px">
+      <button type="button" id="effacer" hidden aria-label="Effacer"
+              style="position:absolute;right:8px;top:50%;transform:translateY(-50%);
+                     background:none;border:none;cursor:pointer;font-size:15px;
+                     color:#9B72CF;padding:6px;width:auto">&#10005;</button>
+    </div>
+  </div>
+
+  <main class="page" style="padding-top:13px">
+
+    <!-- Écran d'accueil -->
+    <div id="accueil">
+      <div style="background:#E8E0F5;border-radius:11px;padding:13px;
+                  display:flex;gap:10px;margin-bottom:18px">
+        <span style="font-size:19px;flex-shrink:0">&#127991;</span>
+        <div>
+          <div style="font-size:13px;font-weight:900;color:#4A2480;margin-bottom:3px">
+            Un article repéré en boutique&nbsp;?
+          </div>
+          <div style="font-size:11px;color:#5B3FA6;line-height:1.5">
+            Tape le numéro inscrit sur son étiquette pour le retrouver directement.
+          </div>
+        </div>
+      </div>
+
+      <div id="bloc-recents" hidden style="margin-bottom:18px">
+        <div class="rangee" style="margin-bottom:8px">
+          <span class="titre-section" style="margin:0">&#128337; Recherches récentes</span>
+          <button type="button" class="btn-lien" id="vider-recents">Effacer</button>
+        </div>
+        <div id="recents"></div>
+      </div>
+
+      <div class="titre-section">&#128293; Recherches fréquentes</div>
+      <div id="suggestions"></div>
+    </div>
+
+    <!-- Résultats -->
+    <div id="zone-resultats" hidden>
+      <div class="rangee" style="margin-bottom:9px">
+        <span class="micro" id="compteur"></span>
+        <span class="micro" id="indice" style="color:#9B72CF;font-weight:700"></span>
+      </div>
+      <div id="liste" class="grille"></div>
+      <div id="note-statut" style="margin-top:12px"></div>
+    </div>
+
+    <div id="chargement" class="chargement" hidden>Recherche…</div>
+
+    <div id="vide" class="vide" hidden>
+      <div class="grand">&#128269;</div>
+      <div class="titre-vide">Aucun résultat</div>
+      <p id="texte-vide"></p>
+    </div>
+
+    <div style="height:20px"></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  const CLE_RECENTS = 'friphoche_recherches';
+  const SUGGESTIONS = ['sweat', 'jean', 'robe', 'chemise', 'veste', 'pull'];
+
+  let profil = null;
+  const champ = document.getElementById('recherche');
+
+  (async function demarrer() {
+    profil = await exigerConnexion();
+    if (!profil) return;
+    afficherNavigation('recherche');
+    await libererReservationsExpirees();
+
+    afficherRecents();
+    afficherSuggestions();
+
+    // Recherche transmise par une autre page
+    const q = new URLSearchParams(location.search).get('q');
+    if (q) { champ.value = q; lancer(q); }
+    else champ.focus();
+  })();
+
+  // ── Mémoire des recherches ──────────────────────
+  // Conservée dans le navigateur, pas en base.
+
+  function lireRecents() {
+    try { return JSON.parse(sessionStorage.getItem(CLE_RECENTS)) || []; }
+    catch (e) { return []; }
+  }
+  function ecrireRecents(liste) {
+    try { sessionStorage.setItem(CLE_RECENTS, JSON.stringify(liste.slice(0, 6))); }
+    catch (e) { /* sans gravité */ }
+  }
+  function memoriser(texte) {
+    const t = texte.trim();
+    if (!t) return;
+    const liste = lireRecents().filter(x => x.toLowerCase() !== t.toLowerCase());
+    liste.unshift(t);
+    ecrireRecents(liste);
+  }
+
+  function afficherRecents() {
+    const liste = lireRecents();
+    const bloc = document.getElementById('bloc-recents');
+    if (!liste.length) { bloc.hidden = true; return; }
+    bloc.hidden = false;
+    document.getElementById('recents').innerHTML =
+      liste.map(t => pastille(t)).join('');
+    brancherPastilles();
+  }
+
+  function afficherSuggestions() {
+    document.getElementById('suggestions').innerHTML =
+      SUGGESTIONS.map(t => pastille(t)).join('');
+    brancherPastilles();
+  }
+
+  function pastille(t) {
+    return `<button type="button" class="pastille-recherche"
+              style="display:inline-block;padding:7px 13px;border-radius:20px;
+                     border:1px solid #D4C5EF;background:#fff;color:#5A5A7A;
+                     font-family:var(--police);font-size:12px;font-weight:700;
+                     cursor:pointer;margin:0 6px 6px 0">${echapper(t)}</button>`;
+  }
+
+  function brancherPastilles() {
+    document.querySelectorAll('.pastille-recherche').forEach(b => {
+      b.onclick = () => { champ.value = b.textContent; lancer(b.textContent); };
+    });
+  }
+
+  document.getElementById('vider-recents').addEventListener('click', () => {
+    ecrireRecents([]); afficherRecents();
+  });
+
+  // ── Recherche ───────────────────────────────────
+
+  let minuteur;
+  champ.addEventListener('input', () => {
+    const t = champ.value.trim();
+    document.getElementById('effacer').hidden = !t;
+    clearTimeout(minuteur);
+    if (!t) { retourAccueil(); return; }
+    minuteur = setTimeout(() => lancer(t), 380);
+  });
+
+  champ.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(minuteur); lancer(champ.value.trim()); }
+  });
+
+  document.getElementById('effacer').addEventListener('click', () => {
+    champ.value = ''; document.getElementById('effacer').hidden = true;
+    retourAccueil(); champ.focus();
+  });
+
+  function retourAccueil() {
+    document.getElementById('accueil').hidden = false;
+    document.getElementById('zone-resultats').hidden = true;
+    document.getElementById('vide').hidden = true;
+    document.getElementById('chargement').hidden = true;
+    afficherRecents();
+  }
+
+  /** Un numéro d'article est une suite de chiffres, avec ou sans #. */
+  function estNumero(t) {
+    return /^#?\d{1,6}$/.test(t.trim());
+  }
+
+  async function lancer(texte) {
+    const t = (texte || '').trim();
+    if (!t) { retourAccueil(); return; }
+
+    document.getElementById('accueil').hidden = true;
+    document.getElementById('vide').hidden = true;
+    document.getElementById('zone-resultats').hidden = true;
+    document.getElementById('chargement').hidden = false;
+    document.getElementById('note-statut').innerHTML = '';
+
+    const parNumero = estNumero(t);
+
+    let q = db.from('articles')
+      .select('id, numero, nom, taille, pointure, etat, cout_jetons, statut, photos, marques(nom)');
+
+    if (parNumero) {
+      // Recherche exacte : on montre l'article même s'il est réservé ou vendu
+      q = q.eq('numero', parseInt(t.replace('#', ''), 10))
+           .neq('statut', 'brouillon');
+    } else {
+      q = q.eq('statut', 'disponible')
+           .ilike('nom', `%${t}%`)
+           .order('cree_le', { ascending: false }).limit(60);
+    }
+
+    const { data, error } = await q;
+    document.getElementById('chargement').hidden = true;
+
+    if (error) { montrerVide(messageErreur(error)); return; }
+
+    let articles = data || [];
+
+    // Recherche par mot : on complète avec la marque
+    if (!parNumero) {
+      const { data: parMarque } = await db.from('articles')
+        .select('id, numero, nom, taille, pointure, etat, cout_jetons, statut, photos, marques!inner(nom)')
+        .eq('statut', 'disponible')
+        .ilike('marques.nom', `%${t}%`).limit(30);
+      const vus = new Set(articles.map(a => a.id));
+      (parMarque || []).forEach(a => { if (!vus.has(a.id)) articles.push(a); });
+    }
+
+    memoriser(t);
+
+    if (!articles.length) {
+      montrerVide(parNumero
+        ? `Aucun article ne porte le numéro ${t.replace('#','')}. Vérifie l'étiquette.`
+        : `Aucun article ne correspond à « ${t} ».`);
+      return;
+    }
+
+    document.getElementById('compteur').textContent =
+      `${articles.length} résultat${articles.length > 1 ? 's' : ''} pour « ${t} »`;
+    document.getElementById('indice').textContent = parNumero ? 'Numéro exact' : '';
+
+    document.getElementById('liste').innerHTML =
+      articles.map(a => carte(a, parNumero ? null : t)).join('');
+
+    // Message si l'article trouvé par numéro n'est plus disponible
+    if (parNumero && articles.length === 1) {
+      const a = articles[0];
+      const zone = document.getElementById('note-statut');
+      if (a.statut === 'disponible') {
+        zone.innerHTML = `<div class="encart encart-ok"><span>Cet article est encore
+          en rayon. Tu peux le réserver depuis sa fiche.</span></div>`;
+      } else if (a.statut === 'reserve') {
+        zone.innerHTML = `<div class="encart encart-info"><span>Cet article est
+          actuellement réservé par quelqu'un d'autre.</span></div>`;
+      } else if (a.statut === 'vendu') {
+        zone.innerHTML = `<div class="encart"
+          style="background:#EBEBEB;color:#4A4A5A"><span>Cet article a déjà
+          été vendu.</span></div>`;
+      }
+    }
+
+    document.getElementById('zone-resultats').hidden = false;
+  }
+
+  function montrerVide(texte) {
+    document.getElementById('texte-vide').textContent = texte;
+    document.getElementById('vide').hidden = false;
+  }
+
+  /** Met en évidence le terme recherché dans un texte. */
+  function surligner(texte, terme) {
+    const t = echapper(texte);
+    if (!terme) return t;
+    const motif = terme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return t.replace(new RegExp(`(${motif})`, 'gi'), '<span class="surligne">$1</span>');
+  }
+
+  function carte(a, terme) {
+    const photo = (a.photos && a.photos[0])
+      ? `style="background-image:url('${a.photos[0]}')"` : '';
+    const icone = (a.photos && a.photos[0]) ? '' : '&#128087;';
+    const marque = a.marques ? a.marques.nom : 'Sans marque';
+    const st = STATUTS[a.statut] || STATUTS.disponible;
+    const badge = a.statut !== 'disponible'
+      ? `<span class="pill ${st.classe}" style="font-size:9px;padding:2px 8px">${st.nom}</span>` : '';
+    const cadre = a.statut === 'disponible' ? '' : 'opacity:.72;';
+
+    return `
+      <a class="carte carte-article" href="article.html?id=${a.id}" style="${cadre}">
+        <div class="photo" ${photo}>${icone}</div>
+        <div class="corps">
+          <div class="marque">${surligner(marque, terme)} · ${tailleAffichee(a)} · #${String(a.numero).padStart(3,'0')}</div>
+          <div class="nom">${surligner(a.nom, terme)}</div>
+          <div class="infos">${nomEtat(a.etat)} · <span class="jetons">${a.cout_jetons} ${motJetons(a.cout_jetons)}</span>
+            ${badge}</div>
+        </div>
+      </a>`;
+  }
+})();
+</script>
+</body>
+</html>
