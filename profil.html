@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Mon profil</title>
+<meta name="theme-color" content="#1A1A2E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:520px;margin:0 auto">
+
+  <!-- En-tête -->
+  <header class="entete-sombre">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="position:relative;flex-shrink:0">
+        <span class="avatar avatar-l" id="avatar"></span>
+        <button type="button" id="changer-photo" aria-label="Changer la photo"
+                style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;
+                       border-radius:50%;background:#4A2480;border:2px solid #1A1A2E;
+                       color:#fff;font-size:11px;cursor:pointer;padding:0;
+                       display:flex;align-items:center;justify-content:center">&#128247;</button>
+        <input type="file" id="fichier-photo" accept="image/*" hidden>
+      </div>
+      <div style="flex:1;min-width:0">
+        <h1 id="nom" style="font-size:18px">…</h1>
+        <div class="sous" id="sous-titre"></div>
+      </div>
+      <span class="pill" id="badge-role" hidden
+            style="background:#4A2480;color:#C4A8EE;font-size:10px"></span>
+    </div>
+  </header>
+
+  <main class="page" style="margin-top:-12px">
+
+    <!-- Compteurs -->
+    <div class="cartouches">
+      <a href="reservations.html" class="cartouche cartouche-vert"
+         style="text-decoration:none;display:block">
+        <div class="titre-c">&#129689; Mes jetons</div>
+        <div class="nombre" id="solde">–</div>
+      </a>
+      <a href="reservations.html" class="cartouche cartouche-violet"
+         style="text-decoration:none;display:block">
+        <div class="titre-c">&#8987; Réservations</div>
+        <div class="nombre" id="nb-resa">–</div>
+      </a>
+    </div>
+
+    <!-- Tailles -->
+    <div class="rangee" style="margin-bottom:7px">
+      <span class="titre-section" style="margin:0">&#128207; Mes tailles</span>
+      <button type="button" class="btn-lien" id="modifier-tailles">Modifier</button>
+    </div>
+    <div class="ligne statique">
+      <span class="contenu"><span class="micro">Genre</span></span>
+      <span class="valeur" id="v-genre">–</span>
+    </div>
+    <div class="ligne statique">
+      <span class="contenu"><span class="micro">Tailles de vêtement</span></span>
+      <span class="valeur" id="v-tailles">–</span>
+    </div>
+    <div class="ligne statique">
+      <span class="contenu"><span class="micro">Pointures</span></span>
+      <span class="valeur" id="v-pointures">–</span>
+    </div>
+    <p class="micro" style="margin:2px 0 16px 2px">
+      Servent à filtrer le catalogue automatiquement.
+    </p>
+
+    <!-- Informations -->
+    <div class="rangee" style="margin-bottom:7px">
+      <span class="titre-section" style="margin:0">&#128100; Mes informations</span>
+      <button type="button" class="btn-lien" id="modifier-infos">Modifier</button>
+    </div>
+    <div class="ligne statique">
+      <span class="contenu"><span class="micro">Classe</span></span>
+      <span class="valeur" id="v-classe">–</span>
+    </div>
+    <div class="ligne statique">
+      <span class="contenu"><span class="micro">Année de naissance</span></span>
+      <span class="valeur" id="v-annee">–</span>
+    </div>
+    <div class="ligne statique">
+      <span class="contenu"><span class="micro">Contact pour les retraits</span></span>
+      <span class="valeur" id="v-tel">–</span>
+    </div>
+    <div class="ligne statique">
+      <span class="contenu"><span class="micro">Adresse e-mail</span></span>
+      <span class="valeur" id="v-email" style="font-size:12px">–</span>
+    </div>
+
+    <div style="height:16px"></div>
+
+    <!-- Activité -->
+    <div class="titre-section">&#128337; Mon activité</div>
+    <a class="ligne" href="reservations.html" style="text-decoration:none">
+      <span style="font-size:17px">&#8987;</span>
+      <span class="contenu"><span class="titre-ligne">Mes réservations en cours</span></span>
+      <span class="pill pill-violet" id="badge-resa" hidden></span>
+      <span class="fleche">&#8250;</span>
+    </a>
+    <a class="ligne" href="reservations.html" style="text-decoration:none">
+      <span style="font-size:17px">&#129689;</span>
+      <span class="contenu"><span class="titre-ligne">Historique des jetons</span></span>
+      <span class="fleche">&#8250;</span>
+    </a>
+    <div class="ligne statique">
+      <span style="font-size:17px">&#128087;</span>
+      <span class="contenu"><span class="titre-ligne">Articles que j'ai déposés</span></span>
+      <span class="valeur" id="nb-deposes">–</span>
+    </div>
+
+    <div style="height:16px"></div>
+
+    <!-- La Frip' -->
+    <div class="titre-section">&#8505; La Frip'</div>
+    <a class="ligne" href="infos.html" style="text-decoration:none">
+      <span style="font-size:17px">&#128340;</span>
+      <span class="contenu"><span class="titre-ligne">Horaires et local</span></span>
+      <span class="fleche">&#8250;</span>
+    </a>
+    <div class="ligne" id="lien-reglement">
+      <span style="font-size:17px">&#128214;</span>
+      <span class="contenu"><span class="titre-ligne">Règlement de la Frip'</span></span>
+      <span class="fleche">&#8250;</span>
+    </div>
+
+    <div style="height:18px"></div>
+    <div class="centre" style="padding-bottom:20px">
+      <button type="button" class="btn-lien" id="deconnexion"
+              style="color:#9B8AAA">Se déconnecter</button>
+    </div>
+  </main>
+</div>
+
+<!-- ══ Modifier les tailles ══ -->
+<div class="voile" id="voile-tailles" hidden>
+  <div class="fenetre">
+    <div class="fenetre-entete" style="background:#E8E0F5">
+      <h2 style="font-size:16px;color:#4A2480">Mes tailles</h2>
+      <button type="button" class="bouton-rond" data-fermer="voile-tailles"
+              style="background:#4A2480;color:#fff;width:26px;height:26px;font-size:14px"
+              aria-label="Fermer">&#10005;</button>
+    </div>
+    <div class="fenetre-corps">
+      <div class="champ">
+        <label>Genre</label>
+        <div class="choix" id="e-genre"></div>
+      </div>
+      <div class="champ">
+        <label>Tailles de vêtement</label>
+        <div class="choix" id="e-tailles"></div>
+        <p class="micro" style="margin-top:5px">Plusieurs choix possibles.</p>
+      </div>
+      <div class="champ">
+        <label>Pointures</label>
+        <div class="choix" id="e-pointures"></div>
+      </div>
+      <button type="button" class="btn" id="enregistrer-tailles">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modifier les informations ══ -->
+<div class="voile" id="voile-infos" hidden>
+  <div class="fenetre">
+    <div class="fenetre-entete" style="background:#E8E0F5">
+      <h2 style="font-size:16px;color:#4A2480">Mes informations</h2>
+      <button type="button" class="bouton-rond" data-fermer="voile-infos"
+              style="background:#4A2480;color:#fff;width:26px;height:26px;font-size:14px"
+              aria-label="Fermer">&#10005;</button>
+    </div>
+    <div class="fenetre-corps">
+      <div id="msg-infos" class="encart encart-erreur" hidden></div>
+
+      <div class="champ">
+        <label>Prénom et nom</label>
+        <div class="ligne-champs">
+          <input type="text" id="e-prenom" autocomplete="given-name">
+          <input type="text" id="e-nom" autocomplete="family-name">
+        </div>
+      </div>
+      <div class="champ">
+        <label for="e-classe">Classe</label>
+        <select id="e-classe"></select>
+      </div>
+      <div class="champ">
+        <label for="e-annee">Année de naissance</label>
+        <select id="e-annee"></select>
+      </div>
+      <div class="champ">
+        <label for="e-tel">Contact pour les retraits</label>
+        <input type="tel" id="e-tel" autocomplete="tel" placeholder="06 12 34 56 78">
+      </div>
+      <button type="button" class="btn" id="enregistrer-infos">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Règlement ══ -->
+<div class="voile" id="voile-reglement" hidden>
+  <div class="fenetre">
+    <div class="fenetre-entete" style="background:#E8E0F5">
+      <h2 id="titre-reglement" style="font-size:16px;color:#4A2480">Règlement</h2>
+      <button type="button" class="bouton-rond" data-fermer="voile-reglement"
+              style="background:#4A2480;color:#fff;width:26px;height:26px;font-size:14px"
+              aria-label="Fermer">&#10005;</button>
+    </div>
+    <div class="fenetre-corps">
+      <div id="corps-reglement" style="font-size:13px;line-height:1.6;color:#2E2E3E">
+        <p class="chargement">Chargement…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  let profil = null;
+  const edit = { genre: null, tailles: new Set(), pointures: new Set() };
+
+  (async function demarrer() {
+    profil = await exigerConnexion();
+    if (!profil) return;
+    afficherNavigation('profil');
+    await libererReservationsExpirees();
+
+    afficher();
+    chargerCompteurs();
+    preparerFormulaires();
+  })();
+
+  function afficher() {
+    const av = document.getElementById('avatar');
+    if (profil.photo_url) {
+      av.style.backgroundImage = `url('${profil.photo_url}')`;
+      av.textContent = '';
+    } else {
+      av.textContent = initiales(profil.prenom, profil.nom);
+    }
+
+    document.getElementById('nom').textContent = `${profil.prenom} ${profil.nom}`;
+    document.getElementById('sous-titre').textContent =
+      [profil.classe, profil.annee_naissance ? 'né(e) en ' + profil.annee_naissance : '']
+        .filter(Boolean).join(' · ');
+
+    if (profil.role !== 'etudiant') {
+      const b = document.getElementById('badge-role');
+      b.textContent = profil.role === 'admin' ? 'ADMIN' : 'BÉNÉVOLE';
+      b.hidden = false;
+    }
+
+    const g = GENRES.find(x => x.code === profil.genre);
+    document.getElementById('v-genre').textContent = g ? g.nom : '—';
+
+    const t = profil.tailles && profil.tailles.length ? profil.tailles : [];
+    document.getElementById('v-tailles').textContent = t.length ? t.join(', ') : '—';
+
+    const p = profil.pointures && profil.pointures.length ? profil.pointures : [];
+    document.getElementById('v-pointures').textContent =
+      p.length ? p.map(libellePointure).join(', ') : '—';
+
+    document.getElementById('v-classe').textContent = profil.classe || '—';
+    document.getElementById('v-annee').textContent = profil.annee_naissance || '—';
+    document.getElementById('v-tel').textContent =
+      profil.whatsapp ? telAffiche(profil.whatsapp) : '—';
+    document.getElementById('v-email').textContent = profil.email || '—';
+  }
+
+  async function chargerCompteurs() {
+    const [solde, resa, deposes] = await Promise.all([
+      monSolde(),
+      db.from('reservations').select('id', { count:'exact', head:true })
+        .eq('etudiant_id', profil.id).is('annulee_le', null).is('vendue_le', null),
+      db.from('articles').select('id', { count:'exact', head:true })
+        .eq('depose_par', profil.id),
+    ]);
+
+    document.getElementById('solde').textContent = solde;
+    const n = resa.count ?? 0;
+    document.getElementById('nb-resa').textContent = n;
+    document.getElementById('nb-deposes').textContent = deposes.count ?? 0;
+
+    if (n > 0) {
+      const b = document.getElementById('badge-resa');
+      b.textContent = n; b.hidden = false;
+    }
+  }
+
+  // ── Fenêtres ────────────────────────────────────
+
+  function ouvrir(id) {
+    document.getElementById(id).hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+  function fermer(id) {
+    document.getElementById(id).hidden = true;
+    document.body.style.overflow = '';
+  }
+  document.querySelectorAll('[data-fermer]').forEach(b => {
+    b.onclick = () => fermer(b.dataset.fermer);
+  });
+  document.querySelectorAll('.voile').forEach(v => {
+    v.addEventListener('click', (e) => { if (e.target === v) fermer(v.id); });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.voile').forEach(v => { if (!v.hidden) fermer(v.id); });
+  });
+
+  // ── Tailles ─────────────────────────────────────
+
+  function pastillesUniques(zoneId, valeurs) {
+    const zone = document.getElementById(zoneId);
+    zone.innerHTML = '';
+    valeurs.forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = v.nom;
+      b.dataset.valeur = v.code;
+      if (edit.genre === v.code) b.classList.add('actif');
+      b.onclick = () => {
+        const deja = edit.genre === v.code;
+        zone.querySelectorAll('button').forEach(x => x.classList.remove('actif'));
+        edit.genre = deja ? null : v.code;
+        if (!deja) b.classList.add('actif');
+      };
+      zone.appendChild(b);
+    });
+  }
+
+  function pastillesMultiples(zoneId, valeurs, ensemble, libelle) {
+    const zone = document.getElementById(zoneId);
+    zone.innerHTML = '';
+    valeurs.forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = libelle ? libelle(v) : v;
+      b.dataset.valeur = v;
+      if (ensemble.has(String(v))) b.classList.add('actif');
+      b.onclick = () => {
+        const k = String(v);
+        if (ensemble.has(k)) { ensemble.delete(k); b.classList.remove('actif'); }
+        else { ensemble.add(k); b.classList.add('actif'); }
+      };
+      zone.appendChild(b);
+    });
+  }
+
+  document.getElementById('modifier-tailles').addEventListener('click', () => {
+    edit.genre = profil.genre;
+    edit.tailles = new Set(profil.tailles || []);
+    edit.pointures = new Set((profil.pointures || []).map(String));
+    pastillesUniques('e-genre', GENRES);
+    pastillesMultiples('e-tailles', TAILLES, edit.tailles);
+    pastillesMultiples('e-pointures', POINTURES, edit.pointures, libellePointure);
+    ouvrir('voile-tailles');
+  });
+
+  document.getElementById('enregistrer-tailles').addEventListener('click', async () => {
+    if (!edit.tailles.size) { notifier('Choisis au moins une taille', 'erreur'); return; }
+
+    const b = document.getElementById('enregistrer-tailles');
+    b.disabled = true; b.textContent = 'Enregistrement…';
+
+    const maj = {
+      genre: edit.genre,
+      tailles: [...edit.tailles],
+      pointures: [...edit.pointures].map(Number),
+    };
+
+    const { error } = await db.from('profils').update(maj).eq('id', profil.id);
+    if (error) { notifier(messageErreur(error), 'erreur'); }
+    else {
+      Object.assign(profil, maj);
+      afficher();
+      fermer('voile-tailles');
+      notifier('Tailles enregistrées', 'ok');
+    }
+    b.disabled = false; b.textContent = 'Enregistrer';
+  });
+
+  // ── Informations ────────────────────────────────
+
+  async function preparerFormulaires() {
+    const selClasse = document.getElementById('e-classe');
+    selClasse.innerHTML = '<option value="">Sélectionner</option>';
+    await remplirClasses(selClasse);
+
+    const selAnnee = document.getElementById('e-annee');
+    selAnnee.innerHTML = '<option value="">Sélectionner</option>';
+    for (let a = anneeMax(); a >= ANNEE_MIN; a--) selAnnee.add(new Option(a, a));
+  }
+
+  document.getElementById('modifier-infos').addEventListener('click', () => {
+    document.getElementById('msg-infos').hidden = true;
+    document.getElementById('e-prenom').value = profil.prenom || '';
+    document.getElementById('e-nom').value = profil.nom || '';
+    document.getElementById('e-classe').value = profil.classe || '';
+    document.getElementById('e-annee').value = profil.annee_naissance || '';
+    document.getElementById('e-tel').value =
+      profil.whatsapp ? telAffiche(profil.whatsapp) : '';
+    ouvrir('voile-infos');
+  });
+
+  document.getElementById('enregistrer-infos').addEventListener('click', async () => {
+    const msg = document.getElementById('msg-infos');
+    const erreur = (t) => { msg.textContent = t; msg.hidden = false; };
+    msg.hidden = true;
+
+    const prenom = document.getElementById('e-prenom').value.trim();
+    const nom    = document.getElementById('e-nom').value.trim();
+    const classe = document.getElementById('e-classe').value || null;
+    const annee  = document.getElementById('e-annee').value;
+    const tel    = document.getElementById('e-tel').value.trim();
+
+    if (!prenom || !nom) { erreur('Indique ton prénom et ton nom.'); return; }
+    if (!classe)         { erreur('Sélectionne ta classe.'); return; }
+    if (!telValide(tel)) { erreur('Saisis un numéro de téléphone valide.'); return; }
+
+    const b = document.getElementById('enregistrer-infos');
+    b.disabled = true; b.textContent = 'Enregistrement…';
+
+    const maj = {
+      prenom, nom, classe,
+      annee_naissance: annee ? Number(annee) : null,
+      whatsapp: normaliserTel(tel),
+    };
+
+    const { error } = await db.from('profils').update(maj).eq('id', profil.id);
+    if (error) { erreur(messageErreur(error)); }
+    else {
+      Object.assign(profil, maj);
+      afficher();
+      fermer('voile-infos');
+      notifier('Informations enregistrées', 'ok');
+    }
+    b.disabled = false; b.textContent = 'Enregistrer';
+  });
+
+  // ── Photo ───────────────────────────────────────
+
+  document.getElementById('changer-photo').addEventListener('click', () => {
+    document.getElementById('fichier-photo').click();
+  });
+
+  document.getElementById('fichier-photo').addEventListener('change', async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    e.target.value = '';
+    notifier('Envoi de la photo…', 'info');
+    try {
+      const url = await envoyerPhotoProfil(f, profil.id);
+      const { error } = await db.from('profils')
+        .update({ photo_url: url }).eq('id', profil.id);
+      if (error) throw error;
+      profil.photo_url = url;
+      afficher();
+      notifier('Photo mise à jour', 'ok');
+    } catch (err) {
+      notifier("Envoi impossible : " + messageErreur(err), 'erreur');
+    }
+  });
+
+  // ── Règlement ───────────────────────────────────
+
+  let reglementCharge = false;
+  document.getElementById('lien-reglement').addEventListener('click', async () => {
+    ouvrir('voile-reglement');
+    if (reglementCharge) return;
+    const t = await chargerTexte('reglement');
+    document.getElementById('titre-reglement').textContent = t.titre || 'Règlement';
+    document.getElementById('corps-reglement').innerHTML = texteEnHtml(t.contenu);
+    reglementCharge = true;
+  });
+
+  // ── Déconnexion ─────────────────────────────────
+
+  document.getElementById('deconnexion').addEventListener('click', async () => {
+    if (!confirm('Se déconnecter ?')) return;
+    await db.auth.signOut();
+    location.href = 'index.html?deconnecte=1';
+  });
+})();
+</script>
+</body>
+</html>
