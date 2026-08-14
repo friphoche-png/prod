@@ -355,7 +355,7 @@
         },
       });
       if (error) throw error;
-      location.href = 'index.html?inscrit=1';
+      location.href = 'index.html?inscrit=1&email=' + encodeURIComponent(email);
     } catch (err) {
       erreur(messageErreur(err));
       bouton.disabled = false;
