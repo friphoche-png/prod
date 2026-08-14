@@ -79,8 +79,17 @@
       </div>
 
       <div class="champ">
-        <label>Coût en jetons</label>
-        <div class="choix" id="choix-cout"></div>
+        <label for="cout">Coût en jetons</label>
+        <div style="display:flex;align-items:center;gap:9px">
+          <button type="button" class="bouton-rond" id="cout-moins"
+                  style="background:#E8E0F5;font-size:20px" aria-label="Diminuer">&#8722;</button>
+          <input type="number" id="cout" min="1" max="99" step="1" value="2" required
+                 inputmode="numeric"
+                 style="text-align:center;font-size:18px;font-weight:900;max-width:96px">
+          <button type="button" class="bouton-rond" id="cout-plus"
+                  style="background:#E8E0F5;font-size:20px" aria-label="Augmenter">+</button>
+          <span class="micro" id="cout-equiv" style="flex:1"></span>
+        </div>
       </div>
 
       <div class="champ">
@@ -283,7 +292,6 @@
     pastilles('choix-pointure', POINTURES, 'pointure', libellePointure);
     pastilles('choix-genre',    GENRES_ARTICLE, 'genre');
     pastilles('choix-etat',     ETATS, 'qualite');
-    pastilles('choix-cout',     [1,2,3,4,5,6,7,8], 'cout');
 
     dessinerCouleurs();
     dessinerPhotos();
@@ -313,6 +321,8 @@
 
     document.getElementById('nom').value = data.nom || '';
     document.getElementById('description').value = data.description || '';
+    document.getElementById('cout').value = data.cout_jetons || 1;
+    majCout();
     document.getElementById('titre-page').textContent = "Modifier l'article";
     const num = document.getElementById('numero');
     num.textContent = '#' + String(data.numero).padStart(3, '0');
@@ -339,11 +349,45 @@
     pastilles('choix-pointure', POINTURES, 'pointure', libellePointure);
     pastilles('choix-genre',    GENRES_ARTICLE, 'genre');
     pastilles('choix-etat',     ETATS, 'qualite');
-    pastilles('choix-cout',     [1,2,3,4,5,6,7,8], 'cout');
     dessinerCouleurs();
     dessinerPhotos();
     majTailleOuPointure();
   }
+
+  // ── Coût en jetons ──────────────────────────────
+
+  const champCout = document.getElementById('cout');
+
+  function majCout() {
+    let n = parseInt(champCout.value, 10);
+    if (isNaN(n) || n < 1) n = 1;
+    if (n > 99) n = 99;
+    etat.cout = n;
+    const euros = (n * PRIX_JETON).toFixed(2).replace('.', ',');
+    document.getElementById('cout-equiv').textContent =
+      `${motJetons(n)} · soit ${euros} €`;
+  }
+
+  champCout.addEventListener('input', majCout);
+  champCout.addEventListener('blur', () => {
+    let n = parseInt(champCout.value, 10);
+    if (isNaN(n) || n < 1) n = 1;
+    if (n > 99) n = 99;
+    champCout.value = n;
+    majCout();
+  });
+
+  document.getElementById('cout-moins').addEventListener('click', () => {
+    champCout.value = Math.max(1, (parseInt(champCout.value, 10) || 1) - 1);
+    majCout();
+  });
+  document.getElementById('cout-plus').addEventListener('click', () => {
+    champCout.value = Math.min(99, (parseInt(champCout.value, 10) || 0) + 1);
+    majCout();
+  });
+
+  majCout();
+
 
   // ── Marque : création à la volée ────────────────
 
@@ -389,7 +433,7 @@
     } else if (!etat.taille)      return 'Choisis une taille.';
     if (!etat.genre)              return 'Choisis un genre.';
     if (!etat.qualite)            return "Choisis l'état de l'article.";
-    if (!etat.cout)               return 'Indique le coût en jetons.';
+    if (!etat.cout || etat.cout < 1) return 'Indique un coût en jetons valide.';
     return null;
   }
 
