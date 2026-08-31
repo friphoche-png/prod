@@ -88,6 +88,26 @@ function peutEtreMineur(annee) {
 }
 
 
+// ─── Réglages généraux ─────────────────────────────
+
+let _reglages = null;
+
+/** Lit un réglage (mis en cache pour la durée de la page). */
+async function lireReglage(cle) {
+  if (_reglages === null) {
+    const { data } = await db.from('reglages').select('cle, valeur');
+    _reglages = {};
+    (data || []).forEach(r => _reglages[r.cle] = r.valeur);
+  }
+  return !!_reglages[cle];
+}
+
+/** Vrai si les fonctions liées à l'argent sont ouvertes. */
+async function argentActif() {
+  return lireReglage('argent_actif');
+}
+
+
 // ─── Données chargées depuis la base ───────────────
 
 let _classes = null;
