@@ -24,6 +24,16 @@
 
     <div id="chargement" class="chargement">Chargement…</div>
 
+    <!-- ── Général ── -->
+    <section data-vue="general" hidden>
+      <div class="encart encart-alerte">
+        <span>Ces réglages concernent toute l'application et ne sont
+        modifiables que par les administratrices.</span>
+      </div>
+
+      <div id="liste-reglages"></div>
+    </section>
+
     <!-- ── Marques ── -->
     <section data-vue="marques" hidden>
       <div style="display:flex;gap:8px;margin-bottom:13px">
@@ -111,10 +121,11 @@
 <script>
 (function () {
   let moi = null;
-  let vue = 'marques';
+  let vue = 'general';
   let marques = [], categories = [], classes = [];
 
   const ONGLETS = [
+    { code:'general',    nom:'Général' },
     { code:'marques',    nom:'Marques' },
     { code:'categories', nom:'Catégories' },
     { code:'classes',    nom:'Classes' },
@@ -136,7 +147,7 @@
 
     construireOnglets();
     document.getElementById('chargement').hidden = true;
-    montrer('marques');
+    montrer('general');
   })();
 
   function construireOnglets() {
@@ -162,10 +173,72 @@
     document.querySelectorAll('[data-vue]').forEach(s => {
       s.hidden = s.dataset.vue !== code;
     });
+    if (code === 'general')    chargerGeneral();
     if (code === 'marques')    chargerMarques();
     if (code === 'categories') chargerCategories();
     if (code === 'classes')    chargerClassesListe();
     if (code === 'textes')     chargerTexteReglement();
+  }
+
+  // ── Général ─────────────────────────────────────
+
+  async function chargerGeneral() {
+    const { data } = await db.from('reglages')
+      .select('cle, valeur, libelle, description, modifie_le').order('cle');
+    const liste = data || [];
+
+    document.getElementById('liste-reglages').innerHTML = liste.map(r => `
+      <div class="carte" style="padding:14px;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:900;margin-bottom:3px">
+              ${echapper(r.libelle)}</div>
+            <div class="micro" style="line-height:1.5">${echapper(r.description || '')}</div>
+          </div>
+          <button type="button" class="bascule-reglage" data-cle="${r.cle}"
+                  data-valeur="${r.valeur}" aria-pressed="${r.valeur}"
+                  style="width:48px;height:27px;border-radius:20px;border:none;
+                         cursor:pointer;position:relative;flex-shrink:0;
+                         background:${r.valeur ? '#4A2480' : '#D4C5EF'}">
+            <span style="position:absolute;top:3px;${r.valeur ? 'right:3px' : 'left:3px'};
+                         width:21px;height:21px;border-radius:50%;background:#fff"></span>
+          </button>
+        </div>
+        <div class="encart ${r.valeur ? 'encart-ok' : 'encart-alerte'}"
+             style="margin:11px 0 0">
+          <span>${r.valeur
+            ? "Actif : l'achat de jetons et le signalement de dépôt sont ouverts."
+            : "Désactivé : seuls les dépôts de vêtements permettent d'obtenir des jetons."}</span>
+        </div>
+      </div>`).join('');
+
+    document.querySelectorAll('.bascule-reglage').forEach(b => {
+      b.onclick = async () => {
+        const nouveau = b.dataset.valeur !== 'true';
+        const question = nouveau
+          ? "Activer les fonctions liées à l'argent ?\n\n"
+            + "Les élèves pourront acheter des jetons et signaler un dépôt "
+            + "dans la boîte aux lettres."
+          : "Désactiver les fonctions liées à l'argent ?\n\n"
+            + "L'achat de jetons disparaîtra de l'application. Les jetons déjà "
+            + "crédités sont conservés.";
+        if (!confirm(question)) return;
+
+        b.disabled = true;
+        try {
+          const { data, error } = await db.rpc('definir_reglage',
+            { p_cle: b.dataset.cle, p_valeur: nouveau });
+          if (error) throw error;
+          if (!data.ok) { notifier(data.message, 'erreur'); b.disabled = false; return; }
+          notifier(nouveau ? 'Fonctions activées' : 'Fonctions désactivées', 'ok');
+          _reglages = null;          // on vide le cache
+          chargerGeneral();
+        } catch (err) {
+          notifier(messageErreur(err), 'erreur');
+          b.disabled = false;
+        }
+      };
+    });
   }
 
   // ── Marques ─────────────────────────────────────
