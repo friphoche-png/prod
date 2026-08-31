@@ -32,7 +32,7 @@
     </div>
 
     <!-- Accès direct au signalement -->
-    <button type="button" id="bouton-depot"
+    <button type="button" id="bouton-depot" hidden
             style="width:100%;background:#EAF5D8;border:1px solid #B8CC6E;
                    border-radius:12px;padding:13px 14px;margin-bottom:13px;
                    display:flex;align-items:center;gap:11px;cursor:pointer;
@@ -123,7 +123,7 @@
         </div>
       </div>
 
-      <div class="ligne statique" style="align-items:flex-start">
+      <div class="ligne statique" id="aide-achat" style="align-items:flex-start">
         <span style="width:34px;height:34px;border-radius:9px;background:#EAF5D8;
                      display:flex;align-items:center;justify-content:center;
                      font-size:17px;flex-shrink:0">&#128234;</span>
@@ -135,7 +135,7 @@
         </div>
       </div>
 
-      <div style="background:#4A2480;border-radius:12px;padding:14px 16px;
+      <div id="aide-prix" style="background:#4A2480;border-radius:12px;padding:14px 16px;
                   display:flex;align-items:center;justify-content:space-between;
                   margin:12px 0 10px">
         <span style="font-size:11px;font-weight:700;color:#C4A8EE;
@@ -154,8 +154,12 @@
         sur l'autre.</span>
       </div>
 
-      <button type="button" class="btn" id="signaler-depot"
+      <button type="button" class="btn" id="signaler-depot" hidden
               style="margin-bottom:8px">J'ai déposé de l'argent</button>
+      <div id="aide-ferme" class="encart encart-info" hidden>
+        <span>L'achat de jetons contre de l'argent n'est pas encore ouvert.
+        Pour obtenir des jetons, dépose des vêtements au local.</span>
+      </div>
       <button type="button" class="btn btn-secondaire" id="ok-aide">Compris</button>
     </div>
   </div>
@@ -249,6 +253,18 @@
 
     afficherHistorique(mvts.data || []);
     afficherDepots(depots.data || []);
+
+    // Fonctions liées à l'argent : ouvertes ou non ?
+    const argent = await argentActif();
+    document.getElementById('bouton-depot').hidden   = !argent;
+    document.getElementById('signaler-depot').hidden = !argent;
+    document.getElementById('aide-achat').hidden     = !argent;
+    document.getElementById('aide-prix').hidden      = !argent;
+    document.getElementById('aide-ferme').hidden     = argent;
+    if (!argent) {
+      document.querySelector('#voile-aide .micro').textContent =
+        'Comment recharger ton solde';
+    }
 
     document.getElementById('chargement').hidden = true;
     document.getElementById('contenu').hidden = false;
