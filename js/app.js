@@ -14,7 +14,12 @@ const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_CLE);
 
 // ─── Listes de valeurs ─────────────────────────────
 
-const TAILLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+// Tailles proposées pour un vêtement mis en vente
+const TAILLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Unique'];
+
+// Tailles proposées dans le profil d'une personne :
+// « Unique » ne sert qu'à décrire un vêtement, pas une morphologie.
+const TAILLES_PROFIL = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 // 46 représente « 46 et plus » — voir libellePointure()
 const POINTURES = [35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
