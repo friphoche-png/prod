@@ -78,6 +78,11 @@
         <textarea id="t-boite" style="min-height:90px"></textarea>
       </div>
 
+      <div class="titre-section">&#9993; Adresse e-mail</div>
+      <div class="champ">
+        <input type="email" id="t-email" placeholder="friphoche@gmail.com">
+      </div>
+
       <div class="titre-section">&#128247; Compte Instagram</div>
       <div class="champ">
         <input type="text" id="t-instagram" placeholder="friphoche">
@@ -122,12 +127,13 @@
   })();
 
   async function chargerTout() {
-    const [h, local, boite, insta, contact] = await Promise.all([
+    const [h, local, boite, insta, contact, email] = await Promise.all([
       db.from('horaires').select('*').order('jour').order('debut'),
       chargerTexte('local'),
       chargerTexte('boite_lettres'),
       chargerTexte('instagram'),
       chargerTexte('contact'),
+      chargerTexte('email'),
     ]);
 
     horaires = h.data || [];
@@ -137,6 +143,7 @@
     document.getElementById('t-boite').value     = boite.contenu || '';
     document.getElementById('t-instagram').value = (insta.contenu || '').replace('@','');
     document.getElementById('t-contact').value   = contact.contenu || '';
+    document.getElementById('t-email').value     = email.contenu || '';
   }
 
   function hhmm(t) {
@@ -227,6 +234,8 @@
         contenu: document.getElementById('t-instagram').value.trim().replace('@','') },
       { cle:'contact',       titre:'Nous contacter',
         contenu: document.getElementById('t-contact').value.trim() },
+      { cle:'email',         titre:'Adresse e-mail',
+        contenu: document.getElementById('t-email').value.trim() },
     ].filter(l => l.contenu);
 
     const { error } = await db.from('textes')
