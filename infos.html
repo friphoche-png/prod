@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Infos pratiques</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:520px;margin:0 auto">
+
+  <header class="barre-haut">
+    <button type="button" class="bouton-rond" id="retour" aria-label="Retour">&#8592;</button>
+    <span class="titre">La Frip'</span>
+    <a href="admin-horaires.html" class="bouton-rond" id="lien-admin" hidden
+       style="text-decoration:none" aria-label="Modifier les horaires">&#9998;</a>
+  </header>
+
+  <main class="page" style="padding-top:13px">
+
+    <div id="chargement" class="chargement">Chargement…</div>
+
+    <div id="contenu" hidden>
+
+      <!-- Ouvert / fermé -->
+      <div id="etat" class="encart" style="align-items:center">
+        <span id="etat-texte"></span>
+      </div>
+
+      <!-- Horaires -->
+      <div class="titre-section">&#128340; Horaires d'ouverture</div>
+      <div class="carte" style="padding:2px 13px 4px;margin-bottom:16px" id="liste-horaires"></div>
+
+      <!-- Local -->
+      <div class="titre-section">&#128205; Où nous trouver</div>
+      <div class="carte" style="padding:13px;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:900;margin-bottom:4px">Local Frip'Hoche</div>
+        <div class="secondaire" id="texte-local" style="line-height:1.55"></div>
+
+        <div class="encart encart-ok" style="margin:11px 0 0">
+          <span>&#128234;</span>
+          <span id="texte-boite"></span>
+        </div>
+      </div>
+
+      <!-- Contact -->
+      <div class="titre-section">&#128172; Nous contacter</div>
+      <a class="ligne" id="lien-instagram" href="#" target="_blank" rel="noopener"
+         style="text-decoration:none">
+        <span style="width:34px;height:34px;border-radius:9px;background:#E8E0F5;
+                     display:flex;align-items:center;justify-content:center;
+                     font-size:17px;flex-shrink:0">&#128247;</span>
+        <span class="contenu">
+          <span class="titre-ligne" id="nom-instagram">Instagram</span>
+          <span class="micro">Nouveautés et annonces</span>
+        </span>
+        <span class="fleche">&#8599;</span>
+      </a>
+
+      <div class="ligne statique" style="align-items:flex-start">
+        <span style="width:34px;height:34px;border-radius:9px;background:#E8E0F5;
+                     display:flex;align-items:center;justify-content:center;
+                     font-size:17px;flex-shrink:0">&#128100;</span>
+        <span class="contenu">
+          <span class="titre-ligne">Sur place</span>
+          <span class="micro" id="texte-contact" style="line-height:1.5"></span>
+        </span>
+      </div>
+
+      <div style="height:16px"></div>
+
+      <!-- Documents -->
+      <div class="titre-section">&#128214; Documents</div>
+      <div class="ligne" id="lien-reglement">
+        <span style="font-size:17px">&#128220;</span>
+        <span class="contenu"><span class="titre-ligne">Règlement de la Frip'</span></span>
+        <span class="fleche">&#8250;</span>
+      </div>
+
+      <div style="height:22px"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Règlement -->
+<div class="voile" id="voile-reglement" hidden>
+  <div class="fenetre">
+    <div class="fenetre-entete" style="background:#E8E0F5">
+      <h2 id="titre-reglement" style="font-size:16px;color:#4A2480">Règlement</h2>
+      <button type="button" class="bouton-rond" id="fermer-reglement"
+              style="background:#4A2480;color:#fff;width:26px;height:26px;font-size:14px"
+              aria-label="Fermer">&#10005;</button>
+    </div>
+    <div class="fenetre-corps">
+      <div id="corps-reglement" style="font-size:13px;line-height:1.6;color:#2E2E3E">
+        <p class="chargement">Chargement…</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  const JOURS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+
+  document.getElementById('retour').addEventListener('click', () => {
+    if (history.length > 1) history.back(); else location.href = 'catalogue.html';
+  });
+
+  (async function demarrer() {
+    const p = await exigerConnexion();
+    if (!p) return;
+    afficherNavigation('profil');
+
+    if (p.role === 'admin') document.getElementById('lien-admin').hidden = false;
+
+    const [horaires, local, boite, insta, contact, ouverture] = await Promise.all([
+      db.from('horaires').select('jour, debut, fin, note').eq('actif', true)
+        .order('jour').order('debut'),
+      chargerTexte('local'),
+      chargerTexte('boite_lettres'),
+      chargerTexte('instagram'),
+      chargerTexte('contact'),
+      db.rpc('ouverture_du_jour'),
+    ]);
+
+    afficherHoraires(horaires.data || []);
+    afficherEtat(ouverture.data, horaires.data || []);
+
+    document.getElementById('texte-local').textContent = local.contenu;
+    document.getElementById('texte-boite').textContent = boite.contenu;
+    document.getElementById('texte-contact').textContent = contact.contenu;
+
+    const compte = (insta.contenu || '').replace('@', '').trim();
+    document.getElementById('nom-instagram').textContent = '@' + compte;
+    document.getElementById('lien-instagram').href = 'https://instagram.com/' + compte;
+
+    document.getElementById('chargement').hidden = true;
+    document.getElementById('contenu').hidden = false;
+  })();
+
+  function hhmm(t) {
+    if (!t) return '';
+    const [h, m] = t.split(':');
+    return m === '00' ? `${Number(h)}h` : `${Number(h)}h${m}`;
+  }
+
+  function afficherHoraires(liste) {
+    const parJour = {};
+    liste.forEach(h => (parJour[h.jour] ||= []).push(h));
+
+    const aujourdhui = new Date().getDay() || 7;   // dimanche = 7
+
+    const lignes = [];
+    for (let j = 1; j <= 7; j++) {
+      const creneaux = parJour[j];
+      // On masque les week-ends sans créneau
+      if (!creneaux && j > 5) continue;
+
+      const cejour = j === aujourdhui;
+      const texte = creneaux
+        ? creneaux.map(c => `${hhmm(c.debut)} – ${hhmm(c.fin)}${c.note ? ' · ' + echapper(c.note) : ''}`).join('<br>')
+        : 'Fermé';
+
+      lignes.push(`
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;
+                    gap:12px;padding:10px 0;
+                    ${j < 7 ? 'border-bottom:1px solid #EDE8F8' : ''}
+                    ${cejour ? 'background:#FBF9FE;margin:0 -13px;padding-left:13px;padding-right:13px' : ''}">
+          <span style="font-size:13px;font-weight:${cejour ? '900' : '700'}">
+            ${JOURS[j-1]}${cejour ? ' <span class="micro" style="color:#9B72CF">&middot; ce jour</span>' : ''}
+          </span>
+          <span style="font-size:12px;text-align:right;
+                       ${creneaux ? 'font-weight:700;color:#2E5A08' : 'color:#9B8AAA'}">
+            ${texte}
+          </span>
+        </div>`);
+    }
+
+    document.getElementById('liste-horaires').innerHTML =
+      lignes.join('') || '<p class="micro" style="padding:10px 0">Aucun horaire renseigné.</p>';
+  }
+
+  function afficherEtat(ouverture, liste) {
+    const zone = document.getElementById('etat');
+    const texte = document.getElementById('etat-texte');
+
+    if (ouverture && ouverture.ouvert) {
+      zone.className = 'encart encart-ok';
+      texte.innerHTML = "<strong>C'est ouvert&nbsp;!</strong> Passe nous voir au local.";
+      return;
+    }
+
+    // Prochaine ouverture
+    const aujourdhui = new Date().getDay() || 7;
+    let prochain = null;
+    for (let d = 0; d < 7; d++) {
+      const j = ((aujourdhui - 1 + d) % 7) + 1;
+      const c = liste.filter(h => h.jour === j).sort((a,b) => a.debut < b.debut ? -1 : 1)[0];
+      if (!c) continue;
+      if (d === 0) {
+        const maintenant = new Date().toTimeString().slice(0,8);
+        if (c.debut <= maintenant) continue;
+      }
+      prochain = { jour: j, creneau: c, dans: d };
+      break;
+    }
+
+    zone.className = 'encart encart-info';
+    if (!prochain) {
+      texte.textContent = 'Fermé pour le moment.';
+      return;
+    }
+    const quand = prochain.dans === 0 ? "aujourd'hui"
+                : prochain.dans === 1 ? 'demain'
+                : JOURS[prochain.jour - 1].toLowerCase();
+    texte.innerHTML = `<strong>Fermé pour le moment.</strong> Prochaine ouverture
+      ${quand} à ${hhmm(prochain.creneau.debut)}.`;
+  }
+
+  // ── Règlement ───────────────────────────────────
+
+  const voile = document.getElementById('voile-reglement');
+  let charge = false;
+
+  document.getElementById('lien-reglement').addEventListener('click', async () => {
+    voile.hidden = false; document.body.style.overflow = 'hidden';
+    if (charge) return;
+    const t = await chargerTexte('reglement');
+    document.getElementById('titre-reglement').textContent = t.titre || 'Règlement';
+    document.getElementById('corps-reglement').innerHTML = texteEnHtml(t.contenu);
+    charge = true;
+  });
+
+  const fermer = () => { voile.hidden = true; document.body.style.overflow = ''; };
+  document.getElementById('fermer-reglement').addEventListener('click', fermer);
+  voile.addEventListener('click', (e) => { if (e.target === voile) fermer(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !voile.hidden) fermer();
+  });
+})();
+</script>
+</body>
+</html>
