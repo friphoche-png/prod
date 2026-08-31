@@ -134,6 +134,7 @@
   }
 
   async function chargerDepots(droits) {
+    if (!await argentActif()) return;
     const { data } = await db.rpc('depots_en_attente');
     const liste = data || [];
     if (!liste.length) return;
@@ -219,10 +220,12 @@
     });
   }
 
-  function construireMenu(d) {
+  async function construireMenu(d) {
+    const argent = await argentActif();
     const entrees = [
       { lien:'admin-articles.html',  icone:'&#128087;', nom:'Tous les articles', ok:true },
-      { lien:'admin-jetons.html',    icone:'&#129689;', nom:'Achat de jetons', ok:!!d.crediter_jetons },
+      { lien:'admin-jetons.html',    icone:'&#129689;', nom:'Achat de jetons',
+        ok: argent && !!d.crediter_jetons },
       { lien:'admin-etudiants.html', icone:'&#127979;', nom:'Comptes étudiants', ok:!!d.voir_etudiants },
       { lien:'admin-benevoles.html', icone:'&#128101;', nom:'Comptes bénévoles', ok:!!d.admin },
       { lien:'admin-horaires.html',  icone:'&#128340;', nom:'Horaires et local', ok:!!d.admin },
