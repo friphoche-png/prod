@@ -39,7 +39,7 @@
         <div style="font-size:15px;font-weight:900;margin-bottom:4px">Local Frip'Hoche</div>
         <div class="secondaire" id="texte-local" style="line-height:1.55"></div>
 
-        <div class="encart encart-ok" style="margin:11px 0 0">
+        <div class="encart encart-ok" id="bloc-boite" hidden style="margin:11px 0 0">
           <span>&#128234;</span>
           <span id="texte-boite"></span>
         </div>
@@ -146,6 +146,7 @@
 
     document.getElementById('texte-local').textContent = local.contenu;
     document.getElementById('texte-boite').textContent = boite.contenu;
+    document.getElementById('bloc-boite').hidden = !(await argentActif());
     document.getElementById('texte-contact').textContent = contact.contenu;
 
     const adresse = (email.contenu || '').trim();
