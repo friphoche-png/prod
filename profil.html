@@ -401,7 +401,7 @@
     edit.tailles = new Set(profil.tailles || []);
     edit.pointures = new Set((profil.pointures || []).map(String));
     pastillesUniques('e-genre', GENRES);
-    pastillesMultiples('e-tailles', TAILLES, edit.tailles);
+    pastillesMultiples('e-tailles', TAILLES_PROFIL, edit.tailles);
     pastillesMultiples('e-pointures', POINTURES, edit.pointures, libellePointure);
     ouvrir('voile-tailles');
   });
