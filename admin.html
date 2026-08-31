@@ -40,6 +40,12 @@
       </div>
     </div>
 
+    <!-- Dépôts d'argent signalés -->
+    <div id="bloc-depots" hidden style="margin-bottom:14px">
+      <div class="titre-section">&#128234; Argent signalé dans la boîte</div>
+      <div id="liste-depots"></div>
+    </div>
+
     <!-- Ajouter -->
     <a href="admin-article.html" id="lien-ajout"
        style="display:flex;align-items:center;gap:11px;background:#4A2480;
@@ -74,9 +80,12 @@
 <script>
 (function () {
 
+  let profilConnecte = null;
+
   (async function demarrer() {
     const p = await exigerEquipe();
     if (!p) return;
+    profilConnecte = p;
     afficherNavigation('admin');
     libererReservationsExpirees();
 
@@ -89,6 +98,7 @@
     construireMenu(droits);
     compter();
     chargerBrouillons();
+    chargerDepots(droits);
 
     if (!droits.ajouter_article) document.getElementById('lien-ajout').hidden = true;
   })();
@@ -121,6 +131,92 @@
         <span class="fleche">&#8250;</span>
       </a>`).join('');
     document.getElementById('bloc-brouillons').hidden = false;
+  }
+
+  async function chargerDepots(droits) {
+    const { data } = await db.rpc('depots_en_attente');
+    const liste = data || [];
+    if (!liste.length) return;
+
+    const peut = !!droits.crediter_jetons;
+
+    document.getElementById('liste-depots').innerHTML = liste.map(d => {
+      const jetons = Math.floor(Number(d.montant) / PRIX_JETON);
+      const soi = d.etudiant_id === profilConnecte.id;
+      return `
+        <div class="ligne statique" style="border-color:#E8C547;background:#FFFBF0;
+             align-items:flex-start;flex-direction:column;gap:9px">
+          <div style="display:flex;gap:10px;width:100%;align-items:flex-start">
+            <span class="avatar avatar-s">${initiales(d.prenom, d.nom)}</span>
+            <span class="contenu">
+              <span class="titre-ligne">${echapper(d.prenom)} ${echapper(d.nom)}
+                — ${Number(d.montant).toFixed(2).replace('.', ',')} €</span>
+              <span class="micro">${echapper(d.classe || '')} · signalé ${depuis(d.signale_le)}
+                · ${jetons} ${motJetons(jetons)}</span>
+              ${d.message ? `<span class="micro" style="display:block;font-style:italic">
+                « ${echapper(d.message)} »</span>` : ''}
+            </span>
+          </div>
+          ${peut && !soi ? `
+            <div style="display:flex;gap:7px;width:100%">
+              <button type="button" class="btn btn-petit confirmer-depot"
+                      data-id="${d.id}" data-jetons="${jetons}"
+                      data-prenom="${echapper(d.prenom)}"
+                      style="flex:1">Argent reçu · créditer ${jetons}</button>
+              <button type="button" class="btn btn-petit btn-secondaire introuvable-depot"
+                      data-id="${d.id}" data-prenom="${echapper(d.prenom)}"
+                      style="border-color:#E8C547;color:#8A6000">Rien trouvé</button>
+            </div>` : `
+            <span class="micro" style="color:#8A6000">
+              ${soi ? 'Ton propre signalement : une autre personne doit le traiter.'
+                    : "Tu n'as pas le droit de créditer des jetons."}</span>`}
+        </div>`;
+    }).join('');
+
+    document.getElementById('bloc-depots').hidden = false;
+    brancherDepots();
+  }
+
+  function brancherDepots() {
+    document.querySelectorAll('.confirmer-depot').forEach(b => {
+      b.onclick = async () => {
+        const n = Number(b.dataset.jetons);
+        if (!confirm(`Confirmer la réception et créditer ${n} jeton(s) à ${b.dataset.prenom} ?`)) return;
+        b.disabled = true; b.textContent = '…';
+        try {
+          const { data, error } = await db.rpc('traiter_depot',
+            { p_depot: Number(b.dataset.id), p_jetons: n, p_note: null });
+          if (error) throw error;
+          if (!data.ok) { notifier(data.message, 'erreur'); b.disabled = false;
+                          b.textContent = `Argent reçu · créditer ${n}`; return; }
+          notifier(`${data.jetons} ${motJetons(data.jetons)} crédités à ${data.prenom}`, 'ok');
+          setTimeout(() => location.reload(), 1000);
+        } catch (err) {
+          notifier(messageErreur(err), 'erreur');
+          b.disabled = false; b.textContent = `Argent reçu · créditer ${n}`;
+        }
+      };
+    });
+
+    document.querySelectorAll('.introuvable-depot').forEach(b => {
+      b.onclick = async () => {
+        if (!confirm(`Aucun argent trouvé pour ${b.dataset.prenom} ?\n\n`
+                   + 'Le signalement sera clos sans crédit.')) return;
+        const note = prompt('Précision (facultatif) :') || null;
+        b.disabled = true;
+        try {
+          const { data, error } = await db.rpc('traiter_depot',
+            { p_depot: Number(b.dataset.id), p_jetons: 0, p_note: note });
+          if (error) throw error;
+          if (!data.ok) { notifier(data.message, 'erreur'); b.disabled = false; return; }
+          notifier('Signalement clos', 'ok');
+          setTimeout(() => location.reload(), 900);
+        } catch (err) {
+          notifier(messageErreur(err), 'erreur');
+          b.disabled = false;
+        }
+      };
+    });
   }
 
   function construireMenu(d) {
