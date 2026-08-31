@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frip'Hoche — Horaires et local</title>
+<meta name="theme-color" content="#4A2480">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div style="max-width:520px;margin:0 auto">
+
+  <header class="barre-haut">
+    <a href="admin.html" class="bouton-rond" aria-label="Retour">&#8592;</a>
+    <span class="titre">Horaires et local</span>
+    <a href="infos.html" class="btn-lien" style="text-decoration:none">Aperçu</a>
+  </header>
+
+  <main class="page" style="padding-top:13px">
+
+    <div id="chargement" class="chargement">Chargement…</div>
+
+    <div id="contenu" hidden>
+
+      <div class="encart encart-info">
+        <span>Les horaires modifiés ici sont visibles immédiatement par
+        tout le monde. Pratique en cas de changement d'emploi du temps.</span>
+      </div>
+
+      <!-- Horaires -->
+      <div class="titre-section">&#128340; Créneaux d'ouverture</div>
+      <div id="liste-horaires"></div>
+
+      <div class="carte" style="padding:13px;margin:10px 0 18px">
+        <div style="font-size:13px;font-weight:900;margin-bottom:10px">Ajouter un créneau</div>
+
+        <div class="champ">
+          <label for="n-jour">Jour</label>
+          <select id="n-jour">
+            <option value="1">Lundi</option>
+            <option value="2" selected>Mardi</option>
+            <option value="3">Mercredi</option>
+            <option value="4">Jeudi</option>
+            <option value="5">Vendredi</option>
+            <option value="6">Samedi</option>
+            <option value="7">Dimanche</option>
+          </select>
+        </div>
+
+        <div class="ligne-champs" style="margin-bottom:12px">
+          <div>
+            <label class="micro" style="display:block;margin-bottom:4px">Début</label>
+            <input type="time" id="n-debut" value="12:30">
+          </div>
+          <div>
+            <label class="micro" style="display:block;margin-bottom:4px">Fin</label>
+            <input type="time" id="n-fin" value="13:30">
+          </div>
+        </div>
+
+        <div class="champ">
+          <label for="n-note">Précision <span class="micro">(facultatif)</span></label>
+          <input type="text" id="n-note" placeholder="Ex. sauf vacances scolaires">
+        </div>
+
+        <button type="button" class="btn" id="ajouter-creneau">Ajouter ce créneau</button>
+      </div>
+
+      <!-- Local -->
+      <div class="titre-section">&#128205; Le local</div>
+      <div class="champ">
+        <textarea id="t-local" style="min-height:70px"></textarea>
+      </div>
+
+      <div class="titre-section">&#128234; Boîte aux lettres</div>
+      <div class="champ">
+        <textarea id="t-boite" style="min-height:90px"></textarea>
+      </div>
+
+      <div class="titre-section">&#128247; Compte Instagram</div>
+      <div class="champ">
+        <input type="text" id="t-instagram" placeholder="friphoche">
+        <p class="micro" style="margin-top:4px">Sans le @ ni l'adresse complète.</p>
+      </div>
+
+      <div class="titre-section">&#128172; Message de contact</div>
+      <div class="champ">
+        <textarea id="t-contact" style="min-height:70px"></textarea>
+      </div>
+
+      <button type="button" class="btn" id="enregistrer-textes">Enregistrer les informations</button>
+
+      <div style="height:24px"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
+<script>
+(function () {
+  const JOURS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  let horaires = [];
+
+  (async function demarrer() {
+    const p = await exigerEquipe();
+    if (!p) return;
+    afficherNavigation('admin');
+
+    if (p.role !== 'admin') {
+      document.getElementById('chargement').innerHTML =
+        '<p>Seules les administratrices peuvent modifier ces informations.</p>' +
+        '<div style="height:14px"></div>' +
+        '<a href="admin.html" class="btn" style="max-width:220px;margin:0 auto;text-decoration:none">Retour</a>';
+      return;
+    }
+
+    await chargerTout();
+    document.getElementById('chargement').hidden = true;
+    document.getElementById('contenu').hidden = false;
+  })();
+
+  async function chargerTout() {
+    const [h, local, boite, insta, contact] = await Promise.all([
+      db.from('horaires').select('*').order('jour').order('debut'),
+      chargerTexte('local'),
+      chargerTexte('boite_lettres'),
+      chargerTexte('instagram'),
+      chargerTexte('contact'),
+    ]);
+
+    horaires = h.data || [];
+    dessinerHoraires();
+
+    document.getElementById('t-local').value     = local.contenu || '';
+    document.getElementById('t-boite').value     = boite.contenu || '';
+    document.getElementById('t-instagram').value = (insta.contenu || '').replace('@','');
+    document.getElementById('t-contact').value   = contact.contenu || '';
+  }
+
+  function hhmm(t) {
+    if (!t) return '';
+    const [h, m] = t.split(':');
+    return m === '00' ? `${Number(h)}h` : `${Number(h)}h${m}`;
+  }
+
+  function dessinerHoraires() {
+    if (!horaires.length) {
+      document.getElementById('liste-horaires').innerHTML =
+        '<p class="micro" style="padding:8px 2px">Aucun créneau. Ajoute le premier ci-dessous.</p>';
+      return;
+    }
+
+    document.getElementById('liste-horaires').innerHTML = horaires.map(h => `
+      <div class="ligne statique" style="${h.actif ? '' : 'opacity:.55'}">
+        <span class="contenu">
+          <span class="titre-ligne">${JOURS[h.jour-1]} · ${hhmm(h.debut)} – ${hhmm(h.fin)}</span>
+          ${h.note ? `<span class="micro">${echapper(h.note)}</span>` : ''}
+        </span>
+        <button type="button" class="bascule-h" data-id="${h.id}" data-actif="${h.actif}"
+                aria-pressed="${h.actif}" title="${h.actif ? 'Désactiver' : 'Activer'}"
+                style="width:44px;height:25px;border-radius:20px;border:none;cursor:pointer;
+                       position:relative;flex-shrink:0;
+                       background:${h.actif ? '#4A2480' : '#D4C5EF'}">
+          <span style="position:absolute;top:3px;${h.actif ? 'right:3px' : 'left:3px'};
+                       width:19px;height:19px;border-radius:50%;background:#fff"></span>
+        </button>
+        <button type="button" class="btn-lien supprimer-h" data-id="${h.id}"
+                style="color:#8A6000">Retirer</button>
+      </div>`).join('');
+
+    document.querySelectorAll('.bascule-h').forEach(b => {
+      b.onclick = async () => {
+        const actif = b.dataset.actif !== 'true';
+        const { error } = await db.from('horaires').update({ actif }).eq('id', b.dataset.id);
+        if (error) { notifier(messageErreur(error), 'erreur'); return; }
+        await chargerTout();
+      };
+    });
+
+    document.querySelectorAll('.supprimer-h').forEach(b => {
+      b.onclick = async () => {
+        if (!confirm('Retirer ce créneau ?')) return;
+        const { error } = await db.from('horaires').delete().eq('id', b.dataset.id);
+        if (error) { notifier(messageErreur(error), 'erreur'); return; }
+        notifier('Créneau retiré', 'ok');
+        await chargerTout();
+      };
+    });
+  }
+
+  document.getElementById('ajouter-creneau').addEventListener('click', async () => {
+    const jour  = Number(document.getElementById('n-jour').value);
+    const debut = document.getElementById('n-debut').value;
+    const fin   = document.getElementById('n-fin').value;
+    const note  = document.getElementById('n-note').value.trim() || null;
+
+    if (!debut || !fin) { notifier('Indique les heures de début et de fin', 'erreur'); return; }
+    if (fin <= debut)   { notifier("L'heure de fin doit être après le début", 'erreur'); return; }
+
+    const b = document.getElementById('ajouter-creneau');
+    b.disabled = true; b.textContent = 'Ajout…';
+
+    const { error } = await db.from('horaires')
+      .insert({ jour, debut, fin, note, actif: true });
+
+    if (error) notifier(messageErreur(error), 'erreur');
+    else {
+      document.getElementById('n-note').value = '';
+      notifier('Créneau ajouté', 'ok');
+      await chargerTout();
+    }
+    b.disabled = false; b.textContent = 'Ajouter ce créneau';
+  });
+
+  document.getElementById('enregistrer-textes').addEventListener('click', async () => {
+    const b = document.getElementById('enregistrer-textes');
+    b.disabled = true; b.textContent = 'Enregistrement…';
+
+    const lignes = [
+      { cle:'local',         titre:'Le local',
+        contenu: document.getElementById('t-local').value.trim() },
+      { cle:'boite_lettres', titre:'Boîte aux lettres',
+        contenu: document.getElementById('t-boite').value.trim() },
+      { cle:'instagram',     titre:'Instagram',
+        contenu: document.getElementById('t-instagram').value.trim().replace('@','') },
+      { cle:'contact',       titre:'Nous contacter',
+        contenu: document.getElementById('t-contact').value.trim() },
+    ].filter(l => l.contenu);
+
+    const { error } = await db.from('textes')
+      .upsert(lignes.map(l => ({ ...l, modifie_le: new Date().toISOString() })),
+              { onConflict: 'cle' });
+
+    if (error) notifier(messageErreur(error), 'erreur');
+    else notifier('Informations enregistrées', 'ok');
+
+    b.disabled = false; b.textContent = 'Enregistrer les informations';
+  });
+})();
+</script>
+</body>
+</html>
