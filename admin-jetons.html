@@ -116,6 +116,15 @@
     if (!moi) return;
     afficherNavigation('admin');
 
+    if (!await argentActif()) {
+      document.getElementById('chargement').innerHTML =
+        "<p>Les fonctions liées à l'argent sont désactivées.</p>" +
+        '<p class="micro" style="margin-top:6px">Une administratrice peut les activer ' +
+        'depuis Réglages.</p><div style="height:14px"></div>' +
+        '<a href="admin.html" class="btn" style="max-width:220px;margin:0 auto;text-decoration:none">Retour</a>';
+      return;
+    }
+
     const droits = await mesDroits();
     if (!droits.crediter_jetons) {
       document.getElementById('chargement').innerHTML =
