@@ -31,6 +31,24 @@
       </div>
     </div>
 
+    <!-- Accès direct au signalement -->
+    <button type="button" id="bouton-depot"
+            style="width:100%;background:#EAF5D8;border:1px solid #B8CC6E;
+                   border-radius:12px;padding:13px 14px;margin-bottom:13px;
+                   display:flex;align-items:center;gap:11px;cursor:pointer;
+                   font-family:var(--police);text-align:left">
+      <span style="width:36px;height:36px;border-radius:10px;background:#DDF0C0;
+                   display:flex;align-items:center;justify-content:center;
+                   font-size:19px;flex-shrink:0">&#128234;</span>
+      <span style="flex:1">
+        <span style="display:block;font-size:14px;font-weight:900;color:#2E5A08">
+          J'ai déposé de l'argent</span>
+        <span style="display:block;font-size:11px;color:#4A7010;margin-top:1px">
+          Signale-le pour qu'on pense à te créditer</span>
+      </span>
+      <span style="color:#4A7010;font-size:17px">&#8250;</span>
+    </button>
+
     <div id="mes-depots" hidden style="margin-bottom:14px"></div>
 
     <div id="chargement" class="chargement">Chargement…</div>
@@ -138,7 +156,7 @@
 
       <button type="button" class="btn" id="signaler-depot"
               style="margin-bottom:8px">J'ai déposé de l'argent</button>
-      <button type="button" class="btn btn-secondaire" id="ok-aide">Fermer</button>
+      <button type="button" class="btn btn-secondaire" id="ok-aide">Compris</button>
     </div>
   </div>
 </div>
@@ -357,6 +375,7 @@
     voile.hidden = true;
     ouvrirDepot();
   });
+  document.getElementById('bouton-depot').addEventListener('click', ouvrirDepot);
   document.getElementById('fermer-depot').addEventListener('click', fermerDepot);
   voileDepot.addEventListener('click', (e) => { if (e.target === voileDepot) fermerDepot(); });
 
