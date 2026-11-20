@@ -40,7 +40,7 @@
         <div class="secondaire" id="texte-local" style="line-height:1.55"></div>
 
         <div class="encart encart-ok" id="bloc-boite" hidden style="margin:11px 0 0">
-          <span>&#128234;</span>
+          <span>&#129689;</span>
           <span id="texte-boite"></span>
         </div>
       </div>
@@ -134,7 +134,7 @@
       db.from('horaires').select('jour, debut, fin, note').eq('actif', true)
         .order('jour').order('debut'),
       chargerTexte('local'),
-      chargerTexte('boite_lettres'),
+      chargerTexte('achat_jetons'),
       chargerTexte('instagram'),
       chargerTexte('contact'),
       chargerTexte('email'),
