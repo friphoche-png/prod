@@ -73,7 +73,7 @@
         <textarea id="t-local" style="min-height:70px"></textarea>
       </div>
 
-      <div class="titre-section">&#128234; Boîte aux lettres</div>
+      <div class="titre-section">&#129689; Acheter des jetons</div>
       <div class="champ">
         <textarea id="t-boite" style="min-height:90px"></textarea>
       </div>
@@ -130,7 +130,7 @@
     const [h, local, boite, insta, contact, email] = await Promise.all([
       db.from('horaires').select('*').order('jour').order('debut'),
       chargerTexte('local'),
-      chargerTexte('boite_lettres'),
+      chargerTexte('achat_jetons'),
       chargerTexte('instagram'),
       chargerTexte('contact'),
       chargerTexte('email'),
@@ -228,7 +228,7 @@
     const lignes = [
       { cle:'local',         titre:'Le local',
         contenu: document.getElementById('t-local').value.trim() },
-      { cle:'boite_lettres', titre:'Boîte aux lettres',
+      { cle:'achat_jetons',  titre:'Acheter des jetons',
         contenu: document.getElementById('t-boite').value.trim() },
       { cle:'instagram',     titre:'Instagram',
         contenu: document.getElementById('t-instagram').value.trim().replace('@','') },
