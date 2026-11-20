@@ -31,25 +31,23 @@
       </div>
     </div>
 
-    <!-- Accès direct au signalement -->
-    <button type="button" id="bouton-depot" hidden
-            style="width:100%;background:#EAF5D8;border:1px solid #B8CC6E;
-                   border-radius:12px;padding:13px 14px;margin-bottom:13px;
-                   display:flex;align-items:center;gap:11px;cursor:pointer;
-                   font-family:var(--police);text-align:left">
+    <!-- Acheter des jetons : remise en main propre -->
+    <a href="infos.html" id="bloc-achat" hidden
+       style="width:100%;background:#EAF5D8;border:1px solid #B8CC6E;
+              border-radius:12px;padding:13px 14px;margin-bottom:13px;
+              display:flex;align-items:center;gap:11px;
+              font-family:var(--police);text-align:left;text-decoration:none">
       <span style="width:36px;height:36px;border-radius:10px;background:#DDF0C0;
                    display:flex;align-items:center;justify-content:center;
-                   font-size:19px;flex-shrink:0">&#128234;</span>
+                   font-size:19px;flex-shrink:0">&#129689;</span>
       <span style="flex:1">
         <span style="display:block;font-size:14px;font-weight:900;color:#2E5A08">
-          J'ai déposé de l'argent</span>
+          Acheter des jetons</span>
         <span style="display:block;font-size:11px;color:#4A7010;margin-top:1px">
-          Signale-le pour qu'on pense à te créditer</span>
+          Remets ton argent à un bénévole au local &middot; voir les horaires</span>
       </span>
       <span style="color:#4A7010;font-size:17px">&#8250;</span>
-    </button>
-
-    <div id="mes-depots" hidden style="margin-bottom:14px"></div>
+    </a>
 
     <div id="chargement" class="chargement">Chargement…</div>
 
@@ -126,12 +124,12 @@
       <div class="ligne statique" id="aide-achat" style="align-items:flex-start">
         <span style="width:34px;height:34px;border-radius:9px;background:#EAF5D8;
                      display:flex;align-items:center;justify-content:center;
-                     font-size:17px;flex-shrink:0">&#128234;</span>
+                     font-size:17px;flex-shrink:0">&#129689;</span>
         <div class="contenu">
           <div class="titre-ligne">Acheter des jetons</div>
-          <div class="micro" style="line-height:1.5">Glisse ton argent dans la boîte
-          aux lettres de la Frip' avec ton nom et ta classe. Les jetons sont
-          crédités sous 72 h.</div>
+          <div class="micro" style="line-height:1.5">Passe au local pendant les
+          horaires d'ouverture et remets ton argent à un bénévole. Tes jetons
+          sont crédités sur-le-champ, devant toi.</div>
         </div>
       </div>
 
@@ -154,61 +152,13 @@
         sur l'autre.</span>
       </div>
 
-      <button type="button" class="btn" id="signaler-depot" hidden
-              style="margin-bottom:8px">J'ai déposé de l'argent</button>
+      <a href="infos.html" class="btn" id="voir-horaires" hidden
+         style="margin-bottom:8px;text-decoration:none">Voir les horaires d'ouverture</a>
       <div id="aide-ferme" class="encart encart-info" hidden>
         <span>L'achat de jetons contre de l'argent n'est pas encore ouvert.
         Pour obtenir des jetons, dépose des vêtements au local.</span>
       </div>
       <button type="button" class="btn btn-secondaire" id="ok-aide">Compris</button>
-    </div>
-  </div>
-</div>
-
-<!-- Signaler un dépôt d'argent -->
-<div class="voile" id="voile-depot" hidden>
-  <div class="fenetre">
-    <div class="fenetre-entete" style="background:#DDF0C0">
-      <div>
-        <h2 style="font-size:16px;color:#2E5A08">J'ai déposé de l'argent</h2>
-        <div class="micro" style="color:#4A7010">Pour qu'on n'oublie pas de te créditer</div>
-      </div>
-      <button type="button" class="bouton-rond" id="fermer-depot"
-              style="background:#4A7010;color:#fff;width:26px;height:26px;font-size:14px"
-              aria-label="Fermer">&#10005;</button>
-    </div>
-    <div class="fenetre-corps">
-      <div id="msg-depot" class="encart encart-erreur" hidden></div>
-
-      <div class="champ">
-        <label>Montant déposé</label>
-        <div class="choix" id="raccourcis-depot" style="margin-bottom:9px"></div>
-        <div style="display:flex;align-items:center;gap:9px">
-          <input type="number" id="montant-depot" min="0.50" step="0.50"
-                 placeholder="0,00" inputmode="decimal"
-                 style="text-align:center;font-size:17px;font-weight:900;max-width:120px">
-          <span style="font-size:15px;font-weight:700;color:#5A5A7A">€</span>
-          <span class="micro" id="equiv-depot" style="flex:1"></span>
-        </div>
-      </div>
-
-      <div class="champ">
-        <label for="message-depot">Précision <span class="micro">(facultatif)</span></label>
-        <input type="text" id="message-depot"
-               placeholder="Ex. billet dans une enveloppe à mon nom">
-      </div>
-
-      <div class="encart encart-info">
-        <span>Écris ton nom et ta classe sur l'argent déposé : c'est ce qui
-        permet à l'équipe de faire le lien.</span>
-      </div>
-
-      <div class="encart encart-alerte">
-        <span>Les jetons seront crédités une fois l'argent retrouvé dans la
-        boîte, sous 72 heures.</span>
-      </div>
-
-      <button type="button" class="btn" id="envoyer-depot">Signaler mon dépôt</button>
     </div>
   </div>
 </div>
@@ -225,7 +175,7 @@
     afficherNavigation('reservations');
     await libererReservationsExpirees();
 
-    const [solde, resa, mvts, depots] = await Promise.all([
+    const [solde, resa, mvts] = await Promise.all([
       monSolde(),
       db.from('reservations')
         .select('id, reserve_le, expire_le, articles(id, numero, nom, cout_jetons, photos, taille, pointure, marques(nom))')
@@ -236,10 +186,6 @@
         .select('id, montant, motif, note, cree_le, articles(numero, nom)')
         .eq('etudiant_id', profil.id)
         .order('cree_le', { ascending: false }).limit(40),
-      db.from('depots_argent')
-        .select('id, montant, etat, signale_le, jetons_credites')
-        .eq('etudiant_id', profil.id)
-        .order('signale_le', { ascending: false }).limit(5),
     ]);
 
     document.getElementById('solde').textContent = solde;
@@ -252,12 +198,11 @@
     }
 
     afficherHistorique(mvts.data || []);
-    afficherDepots(depots.data || []);
 
     // Fonctions liées à l'argent : ouvertes ou non ?
     const argent = await argentActif();
-    document.getElementById('bouton-depot').hidden   = !argent;
-    document.getElementById('signaler-depot').hidden = !argent;
+    document.getElementById('bloc-achat').hidden     = !argent;
+    document.getElementById('voir-horaires').hidden  = !argent;
     document.getElementById('aide-achat').hidden     = !argent;
     document.getElementById('aide-prix').hidden      = !argent;
     document.getElementById('aide-ferme').hidden     = argent;
@@ -349,109 +294,6 @@
         </div>`;
     }).join('');
   }
-
-  // ── Signalements de dépôt ───────────────────────
-
-  function afficherDepots(liste) {
-    const attente = liste.filter(d => d.etat === 'en_attente');
-    if (!attente.length) return;
-
-    const zone = document.getElementById('mes-depots');
-    zone.innerHTML = attente.map(d => {
-      const jetons = Math.floor(Number(d.montant) / PRIX_JETON);
-      return `
-        <div class="encart encart-alerte" style="margin-bottom:7px">
-          <span>&#8987;</span>
-          <span><strong>${Number(d.montant).toFixed(2).replace('.', ',')} € signalés</strong>
-          le ${dateCourte(d.signale_le)} — en attente de vérification.
-          ${jetons} ${motJetons(jetons)} te seront crédités.</span>
-        </div>`;
-    }).join('');
-    zone.hidden = false;
-  }
-
-  const voileDepot = document.getElementById('voile-depot');
-
-  function ouvrirDepot() {
-    document.getElementById('msg-depot').hidden = true;
-    document.getElementById('montant-depot').value = '';
-    document.getElementById('message-depot').value = '';
-    document.getElementById('equiv-depot').textContent = '';
-    document.querySelectorAll('#raccourcis-depot button')
-      .forEach(b => b.classList.remove('actif'));
-    voileDepot.hidden = false;
-    document.body.style.overflow = 'hidden';
-  }
-  function fermerDepot() {
-    voileDepot.hidden = true;
-    document.body.style.overflow = '';
-  }
-
-  document.getElementById('signaler-depot').addEventListener('click', () => {
-    voile.hidden = true;
-    ouvrirDepot();
-  });
-  document.getElementById('bouton-depot').addEventListener('click', ouvrirDepot);
-  document.getElementById('fermer-depot').addEventListener('click', fermerDepot);
-  voileDepot.addEventListener('click', (e) => { if (e.target === voileDepot) fermerDepot(); });
-
-  // Raccourcis de montant
-  [1, 2, 5, 10].forEach(v => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = v + ' €';
-    b.onclick = () => {
-      document.getElementById('montant-depot').value = v.toFixed(2);
-      document.querySelectorAll('#raccourcis-depot button')
-        .forEach(x => x.classList.remove('actif'));
-      b.classList.add('actif');
-      majEquiv();
-    };
-    document.getElementById('raccourcis-depot').appendChild(b);
-  });
-
-  function majEquiv() {
-    const e = parseFloat(document.getElementById('montant-depot').value);
-    const zone = document.getElementById('equiv-depot');
-    if (isNaN(e) || e <= 0) { zone.textContent = ''; return; }
-    const n = Math.floor(e / PRIX_JETON);
-    zone.textContent = `soit ${n} ${motJetons(n)}`;
-  }
-
-  document.getElementById('montant-depot').addEventListener('input', () => {
-    document.querySelectorAll('#raccourcis-depot button')
-      .forEach(x => x.classList.remove('actif'));
-    majEquiv();
-  });
-
-  document.getElementById('envoyer-depot').addEventListener('click', async () => {
-    const msg = document.getElementById('msg-depot');
-    const erreur = (t) => { msg.textContent = t; msg.hidden = false; };
-    msg.hidden = true;
-
-    const montant = parseFloat(document.getElementById('montant-depot').value);
-    if (isNaN(montant) || montant <= 0) { erreur('Indique le montant déposé.'); return; }
-
-    const b = document.getElementById('envoyer-depot');
-    b.disabled = true; b.textContent = 'Envoi…';
-
-    try {
-      const { data, error } = await db.rpc('signaler_depot', {
-        p_montant: montant,
-        p_message: document.getElementById('message-depot').value.trim() || null,
-      });
-      if (error) throw error;
-      if (!data.ok) { erreur(data.message); b.disabled = false;
-                      b.textContent = 'Signaler mon dépôt'; return; }
-
-      fermerDepot();
-      notifier('Dépôt signalé — l\'équipe va vérifier', 'ok');
-      setTimeout(() => location.reload(), 1200);
-    } catch (err) {
-      erreur(messageErreur(err));
-      b.disabled = false; b.textContent = 'Signaler mon dépôt';
-    }
-  });
 
   // ── Annulation ──────────────────────────────────
 
