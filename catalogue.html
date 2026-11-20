@@ -119,7 +119,7 @@
   const f = {
     categorie: null, tailles: new Set(), pointures: new Set(),
     genre: null, couleur: null, etat: null, couts: new Set(),
-    budget: false, matailleActive: false, tri: 'recent', texte: '',
+    budget: false, matailleActive: false, tri: 'hasard', texte: '',
   };
 
   // ── Démarrage ───────────────────────────────────
@@ -140,15 +140,10 @@
     construireRubans();
     construireFiltres();
 
-    // Par défaut, on filtre sur les tailles de la personne
-    const mesTailles = profil.tailles || (profil.taille ? [profil.taille] : []);
-    if (mesTailles.length) {
-      f.matailleActive = true;
-      mesTailles.forEach(t => f.tailles.add(t));
-      (profil.pointures || []).forEach(p => f.pointures.add(String(p)));
-    }
+    // Aucun filtre au démarrage : tout le catalogue est visible.
+    // Le bouton « Ma taille » reste disponible dans le bandeau
+    // pour celles et ceux qui veulent restreindre.
 
-    construireRubans();
     charger();
   })();
 
@@ -246,11 +241,12 @@
 
     if (f.couts.size) q = q.in('cout_jetons', [...f.couts].map(Number));
 
-    if (f.tri === 'prix')      q = q.order('cout_jetons', { ascending: true });
-    else if (f.tri === 'etat') q = q.order('etat', { ascending: true });
-    else                       q = q.order('cree_le', { ascending: false });
+    const tri = f.tri || 'hasard';
+    if (tri === 'prix')      q = q.order('cout_jetons', { ascending: true });
+    else if (tri === 'etat') q = q.order('etat', { ascending: true });
+    else                     q = q.order('cree_le', { ascending: false });
 
-    const { data, error } = await q.limit(120);
+    const { data, error } = await q.limit(200);
 
     document.getElementById('chargement').hidden = true;
 
@@ -261,6 +257,11 @@
     }
 
     const articles = data || [];
+
+    // Ordre « Au hasard » : on mélange la liste à chaque affichage,
+    // pour que le catalogue ne se présente jamais deux fois pareil.
+    if (tri === 'hasard') melanger(articles);
+
     document.getElementById('compteur').textContent =
       articles.length ? `${articles.length} disponible${articles.length > 1 ? 's' : ''}` : '';
     document.getElementById('titre-liste').textContent =
@@ -275,6 +276,15 @@
     }
 
     document.getElementById('liste').innerHTML = articles.map(carte).join('');
+  }
+
+  // Mélange de la liste (méthode Fisher-Yates)
+  function melanger(liste) {
+    for (let i = liste.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = liste[i]; liste[i] = liste[j]; liste[j] = tmp;
+    }
+    return liste;
   }
 
   function carte(a) {
@@ -350,6 +360,7 @@
     unique('f-etat', ETATS, 'etat');
     multi('f-cout', [1,2,3,4,5,6], f.couts);
     unique('f-tri', [
+      { code:'hasard', nom:'Au hasard' },
       { code:'recent', nom:'Nouveautés' },
       { code:'prix',   nom:'Moins cher' },
       { code:'etat',   nom:'Meilleur état' },
@@ -387,7 +398,7 @@
   document.getElementById('effacer').addEventListener('click', () => {
     f.categorie = null; f.genre = null; f.couleur = null; f.etat = null;
     f.tailles.clear(); f.pointures.clear(); f.couts.clear();
-    f.matailleActive = false; f.tri = 'recent';
+    f.matailleActive = false; f.tri = 'hasard';
     construireFiltres();
   });
   voile.addEventListener('click', (e) => { if (e.target === voile) fermerFiltres(); });
